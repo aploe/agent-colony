@@ -328,6 +328,7 @@ Dateinamen abbrechen, statt still auf die Vorgaben zurückzufallen.
 |---|---|
 | `claudeProjectsDir` | Pfad zu den Transkripten von Claude Code. Ohne Wert gilt `~/.claude/projects`; fehlt der Ordner, warnt der Server beim Start |
 | `port` | Port des Servers, Vorgabe 4173. `--port N` oder `COLONY_PORT` überstimmen ihn, `--port 0` nimmt einen freien und nennt ihn in der Startzeile |
+| `host` | Adresse, an die der Server bindet, Vorgabe `127.0.0.1`: nur der eigene Rechner erreicht die Karte, unter WSL auch der Windows-Browser über `localhost`. Eine andere Adresse, etwa `0.0.0.0`, macht `/api/state` mit allen Pfaden, Branches und Aufgaben für jeden lesbar, der sie erreicht; der Server warnt dann beim Start |
 | `pollSeconds` | Poll-Intervall des Browsers, Vorgabe 5 |
 | `gitCacheSeconds` | Wie lange Git-Ergebnisse gelten, Vorgabe 20 |
 | `planets` | Gruppen mit `id`, `label`, `theme` (`earth` oder `mars`), Pfad-`prefixes` und `ground` (Bodenpalette der 3D-Ansicht im Kit-Skin: `rost`, `gruen`, `blau` oder `gelb`; fehlt der Schlüssel, gilt `theme === 'mars' ? 'rost' : 'gruen'`); der letzte Planet fängt den Rest. Vorgabe: ein Planet `kolonie` für alles |
@@ -350,6 +351,12 @@ alle 5 Sekunden, rechnet das Layout selbst und zeichnet: 2D auf einem
 Canvas, 3D mit three.js. Es gibt keinen Build und keinen Bundler. Die
 Browser-Abhängigkeiten (three, Shoelace für die Hover-Cards) kommen direkt
 aus `node_modules` über eine Importmap.
+
+In der Vorgabe lauscht der Server nur auf `127.0.0.1` (Schlüssel `host`).
+Er hat weder Login noch Verschlüsselung, und `/api/state` verrät, woran auf dem Rechner gearbeitet
+wird. Unter WSL im NAT-Modus reicht die Weiterleitung von `localhost` auf
+der Windows-Seite trotzdem bis zu ihm; ein Aufruf über die WSL-IP geht
+dagegen nicht mehr.
 
 | Quelle | Liefert |
 |---|---|

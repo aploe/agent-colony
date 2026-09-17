@@ -61,9 +61,10 @@ const TYPES = {
  * Paketnamen stehen, deshalb hier eine Wurzel statt eines Mounts pro Paket.
  *
  * Ausgeliefert wird damit der ganze node_modules-Baum. Auf einem Server, der
- * nur auf localhost lauscht und ausschliesslich liest, ist das vertretbar; der
- * ../-Schutz unten gilt weiter. Fuer eine Bindung an eine andere Adresse waere
- * es das nicht. */
+ * nur auf localhost lauscht (Vorgabe, siehe `listen` unten) und
+ * ausschliesslich liest, ist das vertretbar; der ../-Schutz unten gilt
+ * weiter. Fuer eine Bindung an eine andere Adresse waere es das nicht, darum
+ * warnt der Start dann. */
 const MOUNTS = [
   ['/vendor/', join(root, 'node_modules')],
   ['/', join(root, 'public')],
@@ -84,10 +85,11 @@ async function state() {
 /* Der Endpoint unten startet Prozesse — als Einziger hier. Darum drei enge
  * Leitplanken, jede gegen einen eigenen Fehlgriff:
  *
- *  - nur Verbindungen vom eigenen Rechner. `listen(port)` bindet an alle
- *    Adressen, damit der Windows-Browser ueber das WSL-Port-Forwarding
- *    herankommt; ein Geraet im selben Netz soll damit aber keine Fenster auf
- *    diesem Laptop aufreissen koennen.
+ *  - nur Verbindungen vom eigenen Rechner. Die Vorgabe bindet ohnehin nur an
+ *    127.0.0.1 (unten bei `listen`); die Pruefung bleibt fuer den Fall, dass
+ *    jemand `host` auf eine Netzadresse stellt. Ein Geraet im selben Netz
+ *    darf auch dann die Karte lesen, aber keine Fenster auf diesem Rechner
+ *    aufreissen.
  *  - der Pfad muss aus der eigenen Erhebung stammen. Der Browser darf einen
  *    Ordner nennen, nicht erfinden.
  *  - execFile statt Shell (in vscode.mjs), also keine Metazeichen-Frage.
@@ -105,8 +107,9 @@ const isLocal = (req) => LOCAL.has(req.socket.remoteAddress ?? '');
  *    beantwortet. Ein Formular-POST kann den Typ gar nicht setzen.
  *  - ein `Origin`, der nicht die eigene Adresse ist, fliegt raus. Geprueft
  *    wird gegen den Host der Anfrage, nicht gegen eine Liste mit localhost:
- *    wer die Karte ueber die WSL-Adresse oder einen Namen aufruft, soll
- *    nicht ausgesperrt werden, waehrend fremde Herkunft weiter scheitert. */
+ *    wer die Karte ueber 127.0.0.1 oder einen anderen Namen fuer den eigenen
+ *    Rechner aufruft, soll nicht ausgesperrt werden, waehrend fremde
+ *    Herkunft weiter scheitert. */
 function sameSite(req) {
   const origin = req.headers.origin;
   if (origin && origin !== `http://${req.headers.host}`) return false;
@@ -226,8 +229,26 @@ const server = createServer(async (req, res) => {
   }
 });
 
+/* Nur an die Loopback-Adresse binden, solange die Config nichts anderes sagt.
+ * `/api/state` traegt alle Repo-Pfade, Branches und Aufgaben der Subagenten,
+ * `/vendor/` den ganzen node_modules-Baum; beides soll auf einer fremden
+ * Maschine nicht im lokalen Netz lesbar sein. Bis 2026-09-17 band der Server
+ * an alle Adressen, in der Annahme, das WSL-Forwarding zum Windows-Browser
+ * brauche das. Gemessen (WSL2, NAT-Modus): ein Server nur auf 127.0.0.1
+ * antwortet `curl.exe` und Edge auf der Windows-Seite unter localhost und
+ * 127.0.0.1; nur `[::1]` kommt nicht an. Wer die Karte bewusst ins Netz
+ * stellt, setzt `host`. */
+const host = cfg.host ?? '127.0.0.1';
+const LOOPBACK = new Set(['127.0.0.1', '::1', 'localhost']);
+
 // Den tatsaechlichen Port ausgeben, nicht den gewuenschten: bei `--port 0`
 // steht er erst nach dem Binden fest, und scripts/drive.mjs liest ihn hier ab.
-server.listen(cfg.port, () => {
+server.listen(cfg.port, host, () => {
   console.log(`Agent Colony -> http://localhost:${server.address().port}`);
+  if (!LOOPBACK.has(host)) {
+    console.warn(
+      `Warnung: host ist ${host}. Jeder, der diese Adresse erreicht, liest /api/state ` +
+        `(alle Pfade, Branches, Aufgaben) und /vendor/. Mit der Vorgabe 127.0.0.1 lauscht er nur lokal.`,
+    );
+  }
 });
