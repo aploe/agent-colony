@@ -7,9 +7,11 @@
  * real path or name typed into a comment. This script is the second line and
  * runs from the hooks in scripts/git-hooks/:
  *
- *   --staged            pre-commit: staged paths, gitlinks, added lines
+ *   --staged            pre-commit: staged paths, gitlinks, added lines, the
+ *                       author and committer identity git is about to use
  *   --message <file>    commit-msg: the commit message
- *   --push <remote>     pre-push: every commit about to be pushed (refs on stdin)
+ *   --push <remote>     pre-push: every commit about to be pushed (refs on
+ *                       stdin), including its author and committer
  *   --all               manual: every tracked path and text file of the index
  *
  * Path rules are built in. Content rules come from workshop/leak-patterns.txt
@@ -145,6 +147,9 @@ function checkCommit(root, sha, patterns) {
     ...scanRaw(git(root, ['diff-tree', ...common, '--raw', '-z', '--no-abbrev', sha]), label),
     ...scanDiff(git(root, ['diff-tree', ...common, '-p', '-U0', '--no-color', '--no-ext-diff', sha]), patterns, label),
     ...scanText(`${label}message`, git(root, ['log', '-1', '--format=%B', sha]), patterns),
+    // Author and committer end up in every public commit, e.g. a work
+    // address from the global git config.
+    ...scanText(`${label}identity`, git(root, ['log', '-1', '--format=%an <%ae>%n%cn <%ce>', sha]), patterns),
   ];
 }
 
@@ -203,6 +208,7 @@ function main(argv) {
     const findings = [
       ...scanRaw(git(root, ['diff', '--cached', '--raw', '-z', '--no-abbrev'])),
       ...scanDiff(git(root, ['diff', '--cached', '-U0', '--no-color', '--no-ext-diff']), patterns),
+      ...scanText('identity', git(root, ['var', 'GIT_AUTHOR_IDENT']) + git(root, ['var', 'GIT_COMMITTER_IDENT']), patterns),
     ];
     return report(findings, 'the staged changes');
   }
