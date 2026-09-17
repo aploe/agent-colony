@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Hex-Karte über die Claude-Code-Projekte dieser Maschine: Repos, Sessions und laufende Agenten",
+  "description": "A live hex map of the Claude Code projects on your machine: which agents work, which wait for you, and what is still uncommitted",
   "license": "SEE LICENSE IN LICENSE",
   "engines": {
     "node": ">=20"

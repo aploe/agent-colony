@@ -1,66 +1,79 @@
 # Agent Colony
 
-Eine Hex-Karte über alle Claude-Code-Projekte auf deiner Maschine. Jedes
-Git-Repo, in dem Claude Code je gearbeitet hat, ist ein Feld; jede Session
-eine Figur darauf. Ein Blick zeigt, wo gerade gearbeitet wird, wo ein Agent
-auf deine Antwort wartet und wo Änderungen uncommittet liegen.
+Which Claude Code session is waiting for you right now? Agent Colony answers
+that with a live map of every project on your machine: one hexagon per repo,
+one figure per session, and a glowing sign over every agent that needs you.
 
-![Die Kolonie in 2D: ein Feld je Repo, Figuren je Session, rechts eine Familie aus Sub-Repos](docs/img/karte-2d.png)
+![Agent Colony in 3D: projects as platforms, sessions as astronauts, a waiting agent under a yellow sign and an asking one under an orange cone](docs/img/map-3d.png)
 
-*Alle Bildschirmfotos in dieser Datei zeigen pseudonymisierte Beispieldaten.*
+*All screenshots show pseudonymized demo data.*
 
-## Wozu
+## The problem
 
-Wer mit Claude Code arbeitet, hat schnell mehr als eine Session offen. Zwei
-Projekte parallel, in jedem ein paar Subagenten, dazu ein Worktree für den
-Branch nebenan. Ab einem Dutzend Terminal-Tabs stellt sich immer dieselbe
-Frage: Wer wartet gerade auf mich? Und gleich danach: Wo habe ich gestern
-Abend etwas liegen lassen?
+Claude Code is fast enough that one session stops being enough. You start a
+second one for the bug that came in, a third in a worktree for the branch
+next door, and each of them hands work to subagents. By lunchtime there are
+twelve terminal tabs, and they all look the same.
 
-Ein Tab-Stapel beantwortet das nicht, eine Tabelle auch nicht gut. Eine
-Fläche schon, weil das Auge ein gelbes Feld unter zwanzig grünen schneller
-findet, als es zwanzig Zeilen liest. Agent Colony ist ein Dashboard mit
-Spielgrammatik: die Waben sind Beiwerk, der Trick ist, Zustand auf eine
-Landkarte zu legen.
+Somewhere in that stack an agent has been sitting on a permission prompt for
+forty minutes. Another one finished an hour ago and is waiting for your
+answer. And in a repo you touched yesterday evening, three files are still
+uncommitted. None of this is hidden, exactly. It is just spread over tabs,
+scrollback and `git status` output that nobody looks at until it hurts.
 
-## Was du bekommst
+A list does not fix it either. Twenty rows of session names ask you to read,
+and reading is the slow part.
 
-- Ein Feld je Git-Repo. Die Füllung sagt, wann dort zuletzt ein Agent
-  gearbeitet hat, der Rand den Git-Zustand: rot bei uncommitteten
-  Änderungen, gelb bei nicht gepushten Commits, grün wenn nichts zu tun ist.
-- Eine Figur je Session, die Subagenten daran. Vier Zustände: arbeitet,
-  fragt (eine Permission-Abfrage oder eine Frage an dich), wartet auf dich,
-  idle.
-- Sub-Repos als angeflanschte Waben. Ein Ordner mit sieben Deployment-Repos
-  wird zur Familie, die sich mit einem Klick zu- und wieder aufklappen lässt.
-- Eine Skyline über jedem Namen: ein Balken je Kalendertag für die Commits
-  der letzten 14 Tage.
-- Ein Panel je Feld mit Pfad, Branch, Sessions, Agenten und einem Sprung
-  nach VS Code. Wer Obsidian nutzt, bekommt dazu einen Link auf die passende
-  Notiz.
-- Ein Klick auf eine Agentenzeile öffnet deren Session als Tab in VS Code —
-  im Fenster, das den Ordner schon offen hat, sonst in einem neuen. Damit ist
-  der Weg von „da wartet jemand" bis „geantwortet" ein Klick lang.
-- Planeten als frei konfigurierbare Gruppen, etwa Arbeit und Privat.
-- Dieselbe Kolonie als 3D-Szene, auf Knopfdruck, wahlweise mit Modellen
-  statt Primitiven.
-- Keinen eigenen Zustand. Die App liest `~/.claude/` und deine Repos,
-  schreibt nichts und hält keine Datenbank. Löschst du sie, fehlt nichts.
+## What Agent Colony does
 
-![Die Kolonie in 3D mit Modell-Kit: Plattformen je Repo, Figuren je Session, Kinder-Repos eine Stufe tiefer](docs/img/karte-3d-kit.png)
+It puts that state on a surface. Your eye finds one yellow field among twenty
+green ones faster than it scans twenty lines, so the map is built around a
+few colours that each mean exactly one thing:
 
-## Voraussetzungen
+- A figure under a **yellow** sign has finished its turn and waits for you.
+  An **orange** one is asking: a permission prompt, a question, or a tool
+  call without an answer.
+- The border of a field is Git. Red means uncommitted changes, yellow means
+  commits that never left the machine.
+- The fill is activity: green for work in the last week, fading to blue-grey
+  and then to an overgrown olive.
 
-- Claude Code auf derselben Maschine. Die Karte liest die Transkripte unter
+When you spot the yellow sign, click the agent in the side panel. Its session
+opens as a tab in VS Code, in the window that already has the folder open, or
+in a new one. From "someone is waiting" to typing the answer is one click.
+
+![Agent Colony in 2D: one field per repo, families of sub-repos, agents waiting on the automations field](docs/img/map-2d.png)
+
+Everything runs locally. The map reads `~/.claude/` and your repositories and
+writes nothing back; there is no database and no cloud service behind it.
+Delete it and nothing is missing.
+
+What else is on the map:
+
+- Sub-repos attach to their parent as a family that folds with one click. A
+  folder with seven deployment repos becomes one field until you open it.
+- A skyline above each name shows commits per day for the last 14 days.
+- Planets group projects the way you think about them, for example work and
+  personal.
+- The same colony as a 3D scene on a small, curved planet. Astronauts walk
+  their field, subagents fly as drones, and on the meadow palette the sea
+  lies behind the colony. Switching views keeps selection and folded
+  families.
+
+The interface is German for now; an English version is planned.
+
+## Requirements
+
+- Claude Code on the same machine. The map reads the transcripts under
   `~/.claude/projects/`.
-- Linux, auch unter WSL. Ob eine Session noch lebt, prüft die App über
-  `/proc`. Ohne das gilt jede Session als beendet: Figuren können dann
-  arbeiten oder idle sein, aber nie warten oder fragen. macOS wird nicht
-  unterstützt, die Skripte unter `scripts/` brechen dort ab.
-- Node 20 oder neuer mit npm, dazu Git, Bash, `ss` (Paket iproute2) und
-  `curl` auf dem PATH.
+- Linux, including WSL. Whether a session is still alive is checked through
+  `/proc`; without it every session counts as closed, and figures can work or
+  idle but never wait or ask. macOS is not supported, the scripts under
+  `scripts/` stop there.
+- Node 20 or newer with npm, plus Git, Bash, `ss` (package iproute2) and
+  `curl` on the PATH.
 
-## Schnellstart
+## Quick start
 
 ```bash
 git clone https://github.com/aploe/agent-colony.git
@@ -68,408 +81,395 @@ cd agent-colony
 ./scripts/install.sh
 ```
 
-Das Skript prüft zuerst alle Voraussetzungen und nennt jede, die fehlt.
-Danach installiert es die Abhängigkeiten mit `npm ci`, legt
-`config/colony.local.json` an und startet den Server im Hintergrund. Die
-Karte läuft dann unter http://localhost:4173. Ob die Status-Hooks
-eingetragen werden sollen, fragt es nach (siehe „Status-Hooks"); `--hooks`
-oder `--no-hooks` beantworten die Frage vorab, `--no-start` lässt den Server
-aus. Ein zweiter Lauf fasst eine vorhandene lokale Config nicht an.
+The script checks all requirements first and names every one that is
+missing. Then it installs the dependencies with `npm ci`, creates
+`config/colony.local.json` and starts the server in the background. The map
+runs at http://localhost:4173. It asks whether to install the status hooks
+(see "Status hooks"); `--hooks` or `--no-hooks` answer that in advance, and
+`--no-start` skips the server. Running it again leaves an existing local
+config alone.
 
 ```bash
-./scripts/install.sh --uninstall   # Hooks austragen, Server beenden
+./scripts/install.sh --uninstall   # remove the hooks, stop the server
 ```
 
-`node_modules` und die lokale Config bleiben dabei liegen. Wer alles
-entfernen will, löscht danach den Ordner.
+`node_modules` and the local config stay where they are. To remove
+everything, delete the folder afterwards.
 
-Ohne das Skript geht es mit `npm install` und `npm start`; der Server läuft
-dann, solange das Terminal offen ist. `./scripts/start-server.sh` startet ihn
-im Hintergrund und ersetzt einen Agent-Colony-Server, der schon auf dem Port
-läuft. Belegt ein anderes Programm den Port, bricht das Skript ab, statt es
-zu beenden. `COLONY_PORT=4180 ./scripts/start-server.sh` weicht auf einen
-anderen Port aus, `./scripts/stop-server.sh` beendet den Server wieder.
+Without the script, `npm install` and `npm start` work too; the server then
+runs as long as the terminal stays open. `./scripts/start-server.sh` starts it
+in the background and replaces an Agent Colony server already running on the
+port. If another program holds the port, the script stops instead of killing
+it. `COLONY_PORT=4180 ./scripts/start-server.sh` moves to another port, and
+`./scripts/stop-server.sh` stops the server again.
 
-Ohne lokale Config liest die Karte `~/.claude/projects` und legt alle Repos
-auf einen einzigen Planeten namens „Kolonie". Gibt es den Ordner nicht,
-sagt der Server das beim Start. Eigene Gruppen und alles, was nur für deine
-Maschine gilt, gehören in `config/colony.local.json`. Die Datei ist
-gitignoriert und überschreibt die Vorgaben aus `config/colony.config.json`,
-und zwar je Schlüssel als Ganzes: wer `planets` setzt, setzt alle Planeten.
-Nur `thresholds` wird Wert für Wert zusammengeführt. `install.sh` schreibt
-`claudeProjectsDir`, `ignorePaths` und unter WSL `wslDistro` hinein, die
-Planeten ergänzt du von Hand:
+Without a local config the map reads `~/.claude/projects` and puts every repo
+on a single planet called "Kolonie". If that folder does not exist, the
+server says so at startup. Your own groups and everything specific to your
+machine belong in `config/colony.local.json`. The file is gitignored and
+overrides the defaults from `config/colony.config.json` key by key as a
+whole: whoever sets `planets` sets all planets. Only `thresholds` is merged
+value by value. `install.sh` writes `claudeProjectsDir`, `ignorePaths` and,
+under WSL, `wslDistro`; planets you add by hand:
 
 ```json
 {
-  "claudeProjectsDir": "/home/du/.claude/projects",
+  "claudeProjectsDir": "/home/you/.claude/projects",
   "wslDistro": "Ubuntu",
   "planets": [
-    { "id": "arbeit", "label": "Arbeit", "theme": "mars",  "prefixes": ["/home/du/work"] },
-    { "id": "privat", "label": "Privat", "theme": "earth", "prefixes": [] }
+    { "id": "work",     "label": "Work",     "theme": "mars",  "prefixes": ["/home/you/work"] },
+    { "id": "personal", "label": "Personal", "theme": "earth", "prefixes": [] }
   ],
-  "ignorePaths": ["/home/du"]
+  "ignorePaths": ["/home/you"]
 }
 ```
 
-Der letzte Planet fängt alles auf, was zu keinem Präfix passt. `wslDistro`
-braucht nur, wer unter WSL arbeitet und aus dem Panel heraus VS Code öffnen
-will; ohne den Wert gibt es keinen Link statt eines falschen — und keinen
-Klick auf eine Agentenzeile, denn beides führt über dieselbe Distro. `ignorePaths`
-nimmt Verzeichnisse von der Karte, die kein Projekt sind, typischerweise das
-Home selbst. Alle weiteren Schlüssel stehen unter „Konfiguration".
+The last planet catches everything that matches no prefix. `wslDistro` is
+only needed under WSL, for the VS Code link in the panel and for opening a
+session with a click; without it there is no link rather than a wrong one.
+`ignorePaths` keeps folders off the map that are not projects, usually the
+home directory itself. All other keys are listed under "Configuration".
 
-`npm run collect` schreibt den erhobenen Zustand als JSON auf die Konsole.
-Das ist der schnellste Weg zu sehen, was die Karte sehen würde, ganz ohne
-Browser.
+`npm run collect` prints the collected state as JSON. That is the quickest way
+to see what the map would see, without a browser.
 
-## Die Karte lesen
+## Reading the map
 
-Die Füllung eines Feldes ist Aktivität, der Rand ist Git. Für eine dritte
-Farbe ist auf der Karte kein Platz; alles Weitere steht im Panel.
+The fill of a field is activity, the border is Git. There is no room for a
+third colour on the map; everything else is in the panel.
 
-| Fläche | Bedeutung |
+| Fill | Meaning |
 |---|---|
-| grün | aktiv: ein Agent hat hier in den letzten 7 Tagen gearbeitet |
-| blaugrau | ruhig: höchstens 30 Tage her |
-| oliv, zugewachsen | stale: länger als 30 Tage |
-| hohl | kein Transkript: ein Sub-Repo, das nie eine eigene Session hatte |
+| green | active: an agent worked here in the last 7 days |
+| blue-grey | quiet: at most 30 days ago |
+| olive, overgrown | stale: longer than 30 days |
+| hollow | no transcript: a sub-repo that never had a session of its own |
 
-| Rand | Bedeutung |
+| Border | Meaning |
 |---|---|
-| rot | dirty, uncommittete Änderungen |
-| gelb | unpushed, oder ein Branch ohne Upstream |
-| grün | clean |
-| grau gestrichelt | kein Repo, also auch nichts aufzuräumen |
-| dunkelrot | das Verzeichnis existiert nicht mehr, die Sessions schon |
+| red | dirty, uncommitted changes |
+| yellow | unpushed, or a branch without upstream |
+| green | clean |
+| grey, dashed | not a repository, so nothing to clean up |
+| dark red | the folder no longer exists, its sessions do |
 
-Dirty schlägt unpushed schlägt clean, weil uncommittete Änderungen der
-einzige Zustand sind, in dem Arbeit verloren gehen kann.
+Dirty beats unpushed beats clean, because uncommitted changes are the only
+state in which work can get lost.
 
-| Figur | Bedeutung |
+| Figure | Meaning |
 |---|---|
-| grün | arbeitet: der letzte Record ist jünger als 3 Minuten |
-| orange mit `!` | fragt: Permission-Abfrage, Frage an dich, oder ein Tool-Aufruf ohne Antwort |
-| gelb mit Sprechblase | wartet auf dich: der Turn ist beendet, seitdem kam keine Reaktion |
-| grau | idle |
-| klein, am Stiel | Subagent, unter der Hauptsession, die ihn gestartet hat |
+| green | working: the last record is younger than 3 minutes |
+| orange with `!` | asking: a permission prompt, a question for you, or a tool call without an answer |
+| yellow with speech bubble | waiting for you: the turn has ended and nothing happened since |
+| grey | idle |
+| small, on a stem | subagent, below the main session that started it |
 
-Orange schlägt grün: eine offene Abfrage darf nie wie Arbeit aussehen. Gelb
-und orange gibt es nur für Sessions, deren Claude-Prozess nachweislich noch
-lebt. Ist der Prozess weg, bleibt die Figur grau, egal was das Transkript
-zuletzt sagt. Blasse Punkte sind Sessions, die in einem Scratchpad gestartet
-wurden und nur über dessen Pfadkodierung einem Feld zugeordnet sind.
+Orange beats green: an open prompt must never look like work. Yellow and
+orange only appear for sessions whose Claude process is provably alive. Once
+the process is gone the figure stays grey, whatever the transcript said last.
+Pale dots are sessions started in a scratchpad and assigned to a field only
+through that path's encoding.
 
-Subagenten hängen unter ihrer Hauptsession. Die Zahl daneben ist ihre echte
-Anzahl, gezeichnet werden höchstens sechs. Sie zählen nie als „wartet auf
-mich", weil ihnen ihr Parent antwortet; orange dürfen sie sein, ihre
-Permission-Abfragen landen bei dir. `+N` am Ende einer Reihe heißt, dass N
-weitere Gruppen nicht mehr aufs Feld passen.
+Subagents hang below their main session. The number next to them is their
+real count; at most six are drawn. They never count as "waiting for you"
+because their parent answers them, but they can be orange, since their
+permission prompts reach you. `+N` at the end of a row means N more groups do
+not fit on the field.
 
-Die Skyline über dem Namen zeigt einen Balken je Kalendertag, 14 Tage, heute
-rechts, die Höhe gemessen am stärksten Tag aller Projekte. Hover zeigt Datum
-und Zahl. Die Zeile unter dem Namen nennt die Sessions insgesamt und die
-Tage seit der letzten Aktivität.
+The skyline above a name has one bar per calendar day, 14 days, today on the
+right, scaled to the busiest day across all projects. Hovering shows date and
+count. The line below the name gives the total number of sessions and the
+days since the last activity.
 
-Ein Sub-Repo und sein Elternfeld bilden eine Familie. Eine helle Silhouette
-zeichnet ihren Außenrand nach, eine kurze Brücke verbindet Parent und Kind.
-Der runde Chip am Container zeigt die Zahl der Kinder und klappt die Familie
-auf oder zu. Zugeklappt übernimmt der Container den schlechtesten
-Git-Zustand seiner Kinder, damit das Zuklappen nicht genau den Zustand
-versteckt, wegen dem es die Kinder gibt. Hover über den Chip hebt die
-Familie hervor und zeigt bei einer zugeklappten Familie als blassen Umriss,
-wo die Kinder nach dem Klick stehen würden.
+A sub-repo and its parent form a family. A light silhouette traces its outer
+edge, a short bridge links parent and child. The round chip on the container
+shows the number of children and folds the family in or out. When folded, the
+container takes on the worst Git state of its children, so folding never hides
+the very state the children are there to show. Hovering the chip highlights
+the family and, for a folded one, draws a faint outline where the children
+would appear after the click.
 
-Jede Familie merkt sich ihre Zelle im Browser und behält sie über Polls und
-Reloads hinweg. Die Karte ordnet sich nur um, wenn ein Feld deutlich von dem
-Ring abweicht, den sein Gewicht vorschlägt, und seit der letzten Umordnung
-eine Sperrfrist vergangen ist; dann als kurze Fahrt statt als Sprung. Der
-Knopf „ordnen" tut dasselbe sofort.
+Every family remembers its cell in the browser and keeps it across polls and
+reloads. The map only rearranges when a field is clearly off the ring its
+weight suggests and a cooldown has passed since the last rearrangement, and
+then as a short animation rather than a jump. The button "ordnen" (arrange)
+does the same immediately.
 
-Der Hangar in der Mitte sammelt Agenten, die sich keinem Feld zuordnen
-lassen. Ein voller Hangar heißt meistens, dass `ignoreCwdPrefixes` oder die
-Pfadauflösung nachjustiert werden will.
+The hangar in the middle collects agents that cannot be assigned to any
+field. A full hangar usually means `ignoreCwdPrefixes` or the path resolution
+needs adjusting.
 
-## Bedienung
+## Controls
 
-In 2D verschiebt Ziehen die Karte, das Rad zoomt um den Cursor, ein Klick
-auf eine Wabe öffnet das Panel, ein Doppelklick zoomt hinein und ein
-Doppelklick ins Leere zurück zur Übersicht. Zoomwechsel laufen als kurze
-Bewegung; wer währenddessen zieht oder scrollt, bricht sie ab.
+In 2D, dragging pans the map, the wheel zooms around the cursor, a click on a
+field opens the panel, a double click zooms in and a double click on empty
+space returns to the overview. Zoom changes run as a short animation; dragging
+or scrolling during it cancels it.
 
-In 3D dreht Ziehen mit der linken Taste, Ziehen mit der rechten schiebt, das
-Rad zoomt zum Cursor, Klick wählt aus, Doppelklick fährt hin. Die Neigung ist
-auf 25 bis 70 Grad begrenzt, unter die Karte schaut man nie. Rauszoomen
-endet knapp hinter der Übersicht der sichtbaren Kolonie; weiter draußen
-bliebe von der Welt nur ein Fleck auf einer Kugel.
+In 3D, left drag rotates, right drag pans, the wheel zooms towards the cursor,
+a click selects and a double click flies there. Tilt is limited to 25 to 70
+degrees, so you never look under the map. Zooming out stops just beyond an
+overview of the visible colony; further out the world would only be a speck
+on a sphere.
 
-Die Knöpfe oben: „ordnen" ordnet die Karte einmal neu, „3D" wechselt den
-Renderer, „Kit" (nur in 3D) tauscht Primitive gegen Modelle. Renderer und
-Skin bleiben im Browser gemerkt.
+The buttons at the top: "ordnen" rearranges the map once, "3D" switches the
+renderer, "Kit" (3D only) swaps primitives for models. Renderer and skin are
+remembered in the browser.
 
-## Status-Hooks
+## Status hooks
 
-Ohne Hooks rät die Karte den Zustand einer Session aus dem Transkript: aus
-dem Alter des letzten Records und daraus, ob ein Tool-Aufruf ohne Antwort
-offen ist. Das reicht, um wartende Sessions zu finden, aber ein Agent, der
-vier Minuten nachdenkt, sieht dann aus wie idle. Mit Hooks meldet jede
-Session ihren Zustand selbst.
+Without hooks the map infers a session's state from its transcript: from the
+age of the last record and from whether a tool call is waiting for an answer.
+That is enough to find waiting sessions, but an agent thinking for four
+minutes then looks idle. With hooks, every session reports its own state.
 
 ```bash
-node scripts/install-hooks.mjs             # eintragen
+node scripts/install-hooks.mjs             # install
 node scripts/install-hooks.mjs --uninstall
 ```
 
-`./scripts/install.sh --hooks` ruft denselben Installer auf.
+`./scripts/install.sh --hooks` calls the same installer.
 
-Der Installer registriert acht Ereignisse global in `~/.claude/settings.json`.
-Hooks im Repo selbst würden nur in Sessions dieses Projekts feuern, die Karte
-will aber alle. Das Hook-Skript bleibt im Repo, der Eintrag zeigt mit
-absolutem Pfad darauf; wer das Repo verschiebt, führt den Installer erneut
-aus. Aus einem Worktree heraus verweigert er den Lauf, weil ein Worktree
-wegwerfbar ist und der Eintrag danach still ins Leere zeigen würde. Wirksam
-ab der nächsten Session; gemeldete Figuren tragen im Panel die Marke
-„gemeldet". Sind die Einträge schon da, schreibt ein weiterer Lauf nichts,
-und `--uninstall` ohne Einträge legt auch keine `settings.json` an.
+The installer registers eight events globally in `~/.claude/settings.json`.
+Hooks in the repository itself would only fire in sessions of this project,
+and the map wants all of them. The hook script stays in the repository and
+the entry points to it with an absolute path; if you move the repository, run
+the installer again. It refuses to run from a worktree, because a worktree is
+disposable and the entry would silently point nowhere afterwards. It takes
+effect from the next session on; reporting figures carry the tag "gemeldet"
+(reported) in the panel. If the entries already exist, another run writes
+nothing, and `--uninstall` without entries does not create a `settings.json`.
 
-Der Hook ist ein Bash-Skript, das je Ereignis eine kleine JSON-Datei unter
-`${XDG_RUNTIME_DIR:-/tmp}/agent-colony/` schreibt und beim Sessionende wieder
-löscht. Es endet unter allen Umständen mit Exit 0 und blockiert nie einen
-Turn. Ob eine Session lebt, entscheidet weiterhin die Karte selbst, über die
-Prozess-Registry von Claude Code und `/proc`.
+The hook is a Bash script that writes a small JSON file per event under
+`${XDG_RUNTIME_DIR:-/tmp}/agent-colony/` and deletes it when the session
+ends. It always exits with 0 and never blocks a turn. Whether a session is
+alive is still decided by the map itself, through Claude Code's process
+registry and `/proc`.
 
-Wer den Eintrag lieber von Hand setzt, hängt für jedes der acht Ereignisse
-eine eigene Matcher-Gruppe an das jeweilige Array an. Bestehende Gruppen
-anderer Werkzeuge bleiben unangetastet; genau so arbeitet auch der
-Installer, und `--uninstall` entfernt nur Gruppen, deren Kommando auf das
-eigene Skript zeigt.
+If you prefer to set the entry by hand, append a separate matcher group to
+the array of each of the eight events. Existing groups of other tools stay
+untouched; the installer works the same way, and `--uninstall` only removes
+groups whose command points to its own script.
 
 ```json
 {
   "hooks": {
-    "SessionStart":      [ { "matcher": "", "hooks": [ { "type": "command", "command": "bash /pfad/zu/agent-colony/hooks/session-status.sh SessionStart" } ] } ],
-    "UserPromptSubmit":  [ { "matcher": "", "hooks": [ { "type": "command", "command": "bash /pfad/zu/agent-colony/hooks/session-status.sh UserPromptSubmit" } ] } ],
-    "Notification":      [ { "matcher": "", "hooks": [ { "type": "command", "command": "bash /pfad/zu/agent-colony/hooks/session-status.sh Notification" } ] } ],
-    "PermissionRequest": [ { "matcher": "", "hooks": [ { "type": "command", "command": "bash /pfad/zu/agent-colony/hooks/session-status.sh PermissionRequest" } ] } ],
-    "Stop":              [ { "matcher": "", "hooks": [ { "type": "command", "command": "bash /pfad/zu/agent-colony/hooks/session-status.sh Stop" } ] } ],
-    "SubagentStart":     [ { "matcher": "", "hooks": [ { "type": "command", "command": "bash /pfad/zu/agent-colony/hooks/session-status.sh SubagentStart" } ] } ],
-    "SubagentStop":      [ { "matcher": "", "hooks": [ { "type": "command", "command": "bash /pfad/zu/agent-colony/hooks/session-status.sh SubagentStop" } ] } ],
-    "SessionEnd":        [ { "matcher": "", "hooks": [ { "type": "command", "command": "bash /pfad/zu/agent-colony/hooks/session-status.sh SessionEnd" } ] } ]
+    "SessionStart":      [ { "matcher": "", "hooks": [ { "type": "command", "command": "bash /path/to/agent-colony/hooks/session-status.sh SessionStart" } ] } ],
+    "UserPromptSubmit":  [ { "matcher": "", "hooks": [ { "type": "command", "command": "bash /path/to/agent-colony/hooks/session-status.sh UserPromptSubmit" } ] } ],
+    "Notification":      [ { "matcher": "", "hooks": [ { "type": "command", "command": "bash /path/to/agent-colony/hooks/session-status.sh Notification" } ] } ],
+    "PermissionRequest": [ { "matcher": "", "hooks": [ { "type": "command", "command": "bash /path/to/agent-colony/hooks/session-status.sh PermissionRequest" } ] } ],
+    "Stop":              [ { "matcher": "", "hooks": [ { "type": "command", "command": "bash /path/to/agent-colony/hooks/session-status.sh Stop" } ] } ],
+    "SubagentStart":     [ { "matcher": "", "hooks": [ { "type": "command", "command": "bash /path/to/agent-colony/hooks/session-status.sh SubagentStart" } ] } ],
+    "SubagentStop":      [ { "matcher": "", "hooks": [ { "type": "command", "command": "bash /path/to/agent-colony/hooks/session-status.sh SubagentStop" } ] } ],
+    "SessionEnd":        [ { "matcher": "", "hooks": [ { "type": "command", "command": "bash /path/to/agent-colony/hooks/session-status.sh SessionEnd" } ] } ]
   }
 }
 ```
 
-Zwei Dinge kann der Hook nicht sehen. Für „Erlaubnis erteilt" gibt es kein
-Ereignis, und für eine Frage an dich (`AskUserQuestion`, Plan-Freigabe) auch
-keins. Beides liefert weiterhin das Transkript: die Frage über den offenen
-Tool-Aufruf, die erteilte Erlaubnis über einen Zeitstempel-Vergleich zwischen
-der Abfrage und dem nächsten Tool-Aufruf danach.
+Two things the hook cannot see. There is no event for "permission granted",
+and none for a question to you (`AskUserQuestion`, plan approval). Both still
+come from the transcript: the question through the open tool call, the
+granted permission through a timestamp comparison between the prompt and the
+next tool call after it.
 
-## 3D-Ansicht
+## 3D view
 
-Der Knopf „3D" zeigt dieselbe Kolonie als Szene, mit denselben Farben: die
-Plattform trägt die Aktivität, die Leuchtkante den Git-Zustand.
-Kinder-Repos liegen eine Stufe tiefer als ihr Hauptordner, der Steg
-dazwischen ist eine Rampe. Über einer Figur, die wartet, schwebt ein Kasten,
-über einer mit offenem Tool-Aufruf ein Kegel. Graue Kisten und das Raster
-bedeuten nichts; alles, was leuchtet, bedeutet etwas.
+The "3D" button shows the same colony as a scene, with the same colours: the
+platform carries activity, the glowing edge carries the Git state. Child repos
+sit one level below their parent, joined by a ramp. A box floats over a
+waiting figure, a cone over one with an open tool call. Grey crates and the
+grid mean nothing; everything that glows means something.
 
-Die Figuren laufen: wer arbeitet, wartet oder fragt, geht langsam in seiner
-Wabe umher und weicht Bauten, Gelände und den anderen aus; wer idle ist,
-geht zu seinem Platz und setzt sich. Eine neue Session läuft einmal vom
-Hangar zu ihrem Projekt. Im Kit schwingen Arme und Beine im Takt des Wegs,
-die Astronauten tragen ein Gesicht, das mit dem Zustand wechselt, und wer
-idle ist, sitzt auf dem Boden seiner Wabe. Die Drohnen der Subagenten
-fliegen selbst: arbeitend kreisen sie um ihren Kopf und fliegen ab und zu
-zu einem Bau der Wabe, den sie mit einem Lichtkegel abtasten. Eine fragende
-Drohne schwebt schräg vor dem Visier, eine idle landet vor dem Platz ihres
-Kopfes, und eine neue schießt aus seinem Rucksack. Nichts davon ist ein Signal;
-den Zustand tragen weiter Ring, Hologramm und Farbe.
+The figures move. Whoever works, waits or asks walks slowly around their field
+and steps around buildings, terrain and each other; whoever is idle walks to
+their spot and sits down. A new session walks once from the hangar to its
+project. In the kit, arms and legs swing with the steps, the astronauts wear a
+face that changes with their state, and idle ones sit on the ground of their
+field. Subagent drones fly on their own: while working they circle their
+astronaut and now and then fly to a building on the field to scan it with a
+cone of light. An asking drone hovers at an angle in front of the visor, an
+idle one lands in front of its astronaut's spot, and a new one shoots out of
+the backpack. None of this is a signal; the state stays with ring, hologram
+and colour.
 
-„Kit" tauscht die Primitive gegen Modelle: KayKit Space Base Bits für
-Gelände und Bauten, dazu zwei Figuren von Sketchfab. Layout und Signale
-bleiben dabei gleich. Die Lizenzen stehen in `public/assets/kit/LICENSES.md`,
-die Nennungen in der Legende: KayKit (CC0), Little Astronaut von
-jellevermandere (CC-BY 4.0), Flying Robot von mshayan02 (CC-BY 4.0).
+"Kit" swaps the primitives for models: KayKit Space Base Bits for terrain and
+buildings, plants from the Kenney Nature Kit, and two figures from Sketchfab.
+Layout and signals stay the same. Licenses are in
+`public/assets/kit/LICENSES.md`, credits in the legend: KayKit (CC0), Kenney
+(CC0), Little Astronaut by jellevermandere (CC-BY 4.0), Flying Robot by
+mshayan02 (CC-BY 4.0).
 
-Der Boden trägt dabei eine Palette je Planet (Konfiguration `ground`) mit
-prozeduralem Rauschen als Relief, dazu eine stumme Streuung rund um die
-Kolonie: Kulisse ohne eigenes Signal, nie anklickbar. Jede Palette streut
-anderes. Die Wiese hat Gras, Büsche, Bäume und einen Strand mit Palmen, die
-Wüste Dünen, Schotter und trockene Büschel, die Eisebene Gletscherbrocken
-und ein zugefrorenes Meer mit Löchern darin, die Marsfläche Findlinge und
-Staub. Jede Wabe sitzt auf einem Sockel in Bodenfarbe, der bis zur Platte
-reicht.
+The ground carries a palette per planet (configuration `ground`) with
+procedural noise as relief, plus silent scenery around the colony that has no
+signal and is never clickable. Each palette scatters something else. The
+meadow has grass, bushes, trees and a beach with palms, the desert dunes,
+gravel and dry tufts, the ice plain glacier chunks and a frozen sea with holes
+in it, the Mars surface boulders and dust. Every field stands on a plinth in
+ground colour that reaches down to the plate.
 
-Die Welt ist gekrümmt. Um den Punkt, den die Kamera ansieht, fällt der Boden
-nach allen Seiten ab wie auf einem kleinen Planeten; wer ein Feld am Rand
-heranholt, hat es oben. Die Waben bleiben ebene Platten und das Raster ein
-Raster, die Krümmung ist Kulisse und gilt in beiden Skins. Titel, Klick und
-Hover sitzen trotzdem auf der Wabe, die man sieht.
+The world is curved. Around the point the camera looks at, the ground falls
+away on all sides like on a small planet; pull a field from the edge closer
+and it comes out on top. Fields stay flat plates and the grid stays a grid;
+the curvature is scenery and applies to both skins. Titles, clicks and hover
+still sit on the field you see.
 
-Beide Ansichten teilen Layout, Zustand und Panel. Wer umschaltet, behält
-Auswahl, Planet und zugeklappte Familien; nur der Blickpunkt geht verloren.
-Schlägt der Import von three.js fehl, etwa ohne `npm install`, fällt die
-Karte auf 2D zurück und schreibt den Grund in die Konsole.
+Both views share layout, state and panel. Switching keeps selection, planet
+and folded families; only the viewpoint is lost. If importing three.js fails,
+for example without `npm install`, the map falls back to 2D and logs the
+reason to the console.
 
-Der Knopf „Kit" ist nur sichtbar, solange 3D aktiv ist, und merkt sich
-wie der Modus im Browser (`localStorage`-Schlüssel `colony.skin`).
+The "Kit" button is only visible while 3D is active and, like the mode, is
+remembered in the browser (`localStorage` key `colony.skin`).
 
+## Configuration
 
-## Konfiguration
+Defaults live in `config/colony.config.json`, everything machine-specific in
+`config/colony.local.json`. The table lists all keys, including those without
+a default in the committed file. A local file that is not a valid JSON object
+makes server and collector stop with the file name instead of silently
+falling back to the defaults.
 
-Die Vorgaben stehen in `config/colony.config.json`, alles
-Maschinenspezifische in `config/colony.local.json`. Die Tabelle nennt alle
-Schlüssel, auch die ohne Vorgabe in der eingecheckten Datei. Eine lokale
-Datei, die kein gültiges JSON-Objekt ist, lässt Server und Collector mit dem
-Dateinamen abbrechen, statt still auf die Vorgaben zurückzufallen.
-
-| Schlüssel | Bedeutung |
+| Key | Meaning |
 |---|---|
-| `claudeProjectsDir` | Pfad zu den Transkripten von Claude Code. Ohne Wert gilt `~/.claude/projects`; fehlt der Ordner, warnt der Server beim Start |
-| `port` | Port des Servers, Vorgabe 4173. `--port N` oder `COLONY_PORT` überstimmen ihn, `--port 0` nimmt einen freien und nennt ihn in der Startzeile |
-| `host` | Adresse, an die der Server bindet, Vorgabe `127.0.0.1`: nur der eigene Rechner erreicht die Karte, unter WSL auch der Windows-Browser über `localhost`. Eine andere Adresse, etwa `0.0.0.0`, macht `/api/state` mit allen Pfaden, Branches und Aufgaben für jeden lesbar, der sie erreicht; der Server warnt dann beim Start |
-| `pollSeconds` | Poll-Intervall des Browsers, Vorgabe 5 |
-| `gitCacheSeconds` | Wie lange Git-Ergebnisse gelten, Vorgabe 20 |
-| `planets` | Gruppen mit `id`, `label`, `theme` (`earth` oder `mars`), Pfad-`prefixes` und `ground` (Bodenpalette der 3D-Ansicht im Kit-Skin: `rost`, `gruen`, `blau` oder `gelb`; fehlt der Schlüssel, gilt `theme === 'mars' ? 'rost' : 'gruen'`); der letzte Planet fängt den Rest. Vorgabe: ein Planet `kolonie` für alles |
+| `claudeProjectsDir` | Path to Claude Code's transcripts. Without a value `~/.claude/projects` applies; if the folder is missing, the server warns at startup |
+| `port` | Server port, default 4173. `--port N` or `COLONY_PORT` override it, `--port 0` picks a free one and names it in the startup line |
+| `host` | Address the server binds to, default `127.0.0.1`: only your own machine reaches the map, under WSL also the Windows browser via `localhost`. Another address such as `0.0.0.0` makes `/api/state` with all paths, branches and tasks readable for anyone who reaches it; the server then warns at startup |
+| `pollSeconds` | Browser poll interval, default 5 |
+| `gitCacheSeconds` | How long Git results stay valid, default 20 |
+| `planets` | Groups with `id`, `label`, `theme` (`earth` or `mars`), path `prefixes` and `ground` (ground palette of the 3D kit skin: `rost`, `gruen`, `blau` or `gelb`; without the key, `theme === 'mars' ? 'rost' : 'gruen'` applies); the last planet catches the rest. Default: one planet `kolonie` for everything |
 | `thresholds` | `activeDays` 7, `quietDays` 30, `freshSessionDays` 14, `agentWorkingMinutes` 3, `agentPromptMinutes` 1, `agentWaitingMinutes` 90, `agentDropHours` 24 |
-| `subRepos` | `depth` 2, `maxSatellites` 12, `skipDirs` (etwa `node_modules`) |
+| `subRepos` | `depth` 2, `maxSatellites` 12, `skipDirs` (such as `node_modules`) |
 | `reorder` | `ringDelta` 2, `cooldownSeconds` 60, `animateMs` 400 |
-| `ignoreDirs` | Kodierte Ordnernamen unter `~/.claude/projects`, die nie ein Feld werden |
-| `ignorePaths` | Volle Pfade, die nie ein Feld werden, etwa das Home |
-| `ignoreCwdPrefixes` | Pfad-Präfixe, die bei der Zuordnung von Agenten übersprungen werden, etwa Scratchpads |
-| `wslDistro` | WSL-Distro für den VS-Code-Link im Panel und das Öffnen einer Session; ohne Wert kein Link und kein Klick. `install.sh` übernimmt ihn aus `WSL_DISTRO_NAME` |
-| `vscodeCli` | Pfad zur `code`-CLI, falls die Suche unter `~/.vscode-server/bin/*/bin/remote-cli/code` fehlschlägt. Normalerweise leer |
-| `vaultPath`, `vaultName`, `projectsDir`, `noteMapping` | Obsidian-Vault und Notizordner für den optionalen Notiz-Link; `noteMapping` ordnet Repo-Pfaden Notiztitel zu, sonst gilt der Name |
-| `hookStatusDir` | Ort der Hook-Statusdateien, nur für den Leser. Vorgabe `${XDG_RUNTIME_DIR:-/tmp}/agent-colony` |
+| `ignoreDirs` | Encoded folder names under `~/.claude/projects` that never become a field |
+| `ignorePaths` | Full paths that never become a field, such as the home directory |
+| `ignoreCwdPrefixes` | Path prefixes skipped when assigning agents, such as scratchpads |
+| `wslDistro` | WSL distro for the VS Code link in the panel and for opening a session; without a value there is no link and no click. `install.sh` takes it from `WSL_DISTRO_NAME` |
+| `vscodeCli` | Path to the `code` CLI, in case the search under `~/.vscode-server/bin/*/bin/remote-cli/code` fails. Usually empty |
+| `vaultPath`, `vaultName`, `projectsDir`, `noteMapping` | Obsidian vault and notes folder for the optional note link; `noteMapping` maps repo paths to note titles, otherwise the name is used |
+| `hookStatusDir` | Location of the hook status files, for the reader only. Default `${XDG_RUNTIME_DIR:-/tmp}/agent-colony` |
 
-## Wie es funktioniert
+## How it works
 
-Ein Collector auf reiner Node-Standardbibliothek erhebt bei jedem Refresh
-den Zustand und liefert ihn als JSON unter `/api/state`. Der Browser pollt
-alle 5 Sekunden, rechnet das Layout selbst und zeichnet: 2D auf einem
-Canvas, 3D mit three.js. Es gibt keinen Build und keinen Bundler. Die
-Browser-Abhängigkeiten (three, Shoelace für die Hover-Cards) kommen direkt
-aus `node_modules` über eine Importmap.
+A collector on the plain Node standard library gathers the state on every
+refresh and serves it as JSON at `/api/state`. The browser polls every 5
+seconds, computes the layout itself and draws: 2D on a canvas, 3D with
+three.js. There is no build step and no bundler. The browser dependencies
+(three, Shoelace for the hover cards) come straight from `node_modules`
+through an import map.
 
-In der Vorgabe lauscht der Server nur auf `127.0.0.1` (Schlüssel `host`).
-Er hat weder Login noch Verschlüsselung, und `/api/state` verrät, woran auf dem Rechner gearbeitet
-wird. Unter WSL im NAT-Modus reicht die Weiterleitung von `localhost` auf
-der Windows-Seite trotzdem bis zu ihm; ein Aufruf über die WSL-IP geht
-dagegen nicht mehr.
+By default the server listens on `127.0.0.1` only (key `host`). It has
+neither login nor encryption, and `/api/state` reveals what is being worked
+on. Under WSL in NAT mode, forwarding of `localhost` from the Windows side
+still reaches it; a request through the WSL IP no longer does.
 
-| Quelle | Liefert |
+| Source | Provides |
 |---|---|
-| `~/.claude/projects/<kodierter Pfad>/` | Felder, Session- und Subagenten-Zahlen, letzte Aktivität aus dem jüngsten Record im Transkript, nicht aus der Datei-mtime |
-| `…/subagents/*.jsonl` und `*.meta.json` | Subagenten als kleine Figuren, ihr Name und ihre Aufgabe |
-| `~/.claude/sessions/<pid>.json` gegen `/proc/<pid>/stat` | Ob der Claude-Prozess einer Session noch lebt |
-| `${XDG_RUNTIME_DIR:-/tmp}/agent-colony/` | Optional der von der Session selbst gemeldete Zustand (Status-Hooks) |
-| `git status`, `rev-list`, `log` je Repo | Rand und Skyline |
-| Notizen im Obsidian-Vault | Nur ein optionaler Link, steuert nichts |
+| `~/.claude/projects/<encoded path>/` | Fields, session and subagent counts, last activity from the newest record in the transcript rather than the file mtime |
+| `…/subagents/*.jsonl` and `*.meta.json` | Subagents as small figures, their name and task |
+| `~/.claude/sessions/<pid>.json` checked against `/proc/<pid>/stat` | Whether a session's Claude process is still alive |
+| `${XDG_RUNTIME_DIR:-/tmp}/agent-colony/` | Optionally the state a session reported itself (status hooks) |
+| `git status`, `rev-list`, `log` per repo | Border and skyline |
+| Notes in an Obsidian vault | Only an optional link, controls nothing |
 
-Ein Feld ist ein Git-Repo-Root. Ein Worktree oder ein Unterverzeichnis
-desselben Repos wird zusammengelegt und erscheint im Panel unter „Auch"; ein
-echtes Sub-Repo mit eigenem Git-Verzeichnis wird zur Kind-Wabe. Entdeckt
-werden Sub-Repos bis Tiefe 2 unterhalb eines Feldes, das bereits eine
-Session hatte, mit einem Deckel von 12 je Feld.
+A field is a Git repository root. A worktree or a subfolder of the same repo
+is merged into it and listed in the panel under "Auch" (also); a real sub-repo
+with its own Git directory becomes a child field. Sub-repos are discovered up
+to depth 2 below a field that already had a session, capped at 12 per field.
 
-Claude Code kodiert das Startverzeichnis einer Session als Ordnernamen und
-ersetzt dabei `/`, `_` und `.` durch `-`. Das ist nicht umkehrbar:
-`team-websites` und `team/websites` ergeben beide `-team-websites`. Die Karte
-löst deshalb in zwei Richtungen auf. Zuerst vom cwd im Transkript aufwärts,
-bis die Kodierung eines Vorfahren auf den Ordnernamen passt. Scheitert das,
-etwa weil eine Session nur Scratchpad-Pfade kennt, dann vom Dateisystem
-abwärts entlang der Zweige, deren Kodierung ein Präfix des Zielnamens ist.
+Claude Code encodes a session's start folder as a directory name and replaces
+`/`, `_` and `.` with `-`. That cannot be reversed: `team-websites` and
+`team/websites` both become `-team-websites`. The map therefore resolves in
+two directions. First upwards from the cwd in the transcript, until the
+encoding of an ancestor matches the folder name. If that fails, for instance
+because a session only knows scratchpad paths, it walks down the file system
+along the branches whose encoding is a prefix of the target name.
 
-Git ist die teuerste Quelle. Seine Ergebnisse leben 20 Sekunden im Cache,
-ein einzelner Aufruf bricht nach 5 Sekunden ab, und der Server hält eine
-Erhebung für die halbe Poll-Zeit vor, damit mehrere Tabs sie nicht
-vervielfachen.
+Git is the most expensive source. Its results live in a cache for 20
+seconds, a single call gives up after 5 seconds, and the server keeps one
+collection for half the poll time so that several tabs do not multiply it.
 
-Was nicht ermittelbar ist, steht als `null` im State und als „—" im Panel,
-nicht als plausibel klingende Zahl. Lieber ein Feld weniger als ein Feld
-mit geratenen Daten.
+Whatever cannot be determined is `null` in the state and a dash in the
+panel, never a plausible-looking number. Better one field less than a field with
+guessed data.
 
-## Bekannte Grenzen
+## Known limits
 
-- Ohne Status-Hook ist der Agentenzustand heuristisch. Ob eine Session
-  offen ist, ist immer sicher; was sie gerade tut, wird aus dem Transkript
-  abgeleitet. Subagenten bleiben auch mit Hook heuristisch, weil ihre
-  Hook-Ereignisse keinen Zustand tragen.
-- Orange kann ohne Hook ein lang laufendes Tool sein. Ein Bash-Lauf von
-  vier Minuten sieht im Transkript aus wie eine Permission-Abfrage; deshalb
-  steht im Panel „unbeantworteter Tool-Aufruf", nicht „Permission".
-  `Agent`, `Monitor`, `Workflow` und `TaskOutput` sind ausgenommen, weil sie
-  per Definition lange laufen.
-- Im Auto-Mode feuert `PermissionRequest` auch für Kommandos, die sofort
-  erlaubt werden. Orange ist dann nur Sekundenbruchteile sichtbar.
-- Sessions aus einem anderen `~/.claude`, etwa von der Windows-Seite unter
-  WSL, haben hier weder Transkript noch Registry-Eintrag und fehlen komplett.
-- Der Rand eines Feldes mit Worktrees zeigt den Zustand des Hauptrepos,
-  nicht den des Worktrees.
-- Git läuft pro Repo pro Refresh. Bei vielen Feldern ist das der erste
-  Engpass.
-- Die Zuordnung über Scratchpad-Pfade ist ein Präfix-Vergleich und kann bei
-  gleich kodierten Pfaden falsch liegen.
-- Ein Repo ohne vorherige Session erscheint nie, auch nicht als Kind eines
-  Feldes, das selbst keine Session hatte. Die Karte zeigt Arbeitsorte, nicht
-  das Dateisystem. Ein entdecktes Sub-Repo entdeckt selbst nichts weiter.
-- Tiefe 2 ist eine Wette auf die übliche Ordnerstruktur. Tiefe 3 fand in
-  einem Test statt 10 gleich 64 Kinder, davon 54 Extension-Klone unter einem
-  einzigen Feld. Der Wert steht deshalb in der Config.
-- Die Umordnung misst nur den Ring der Wurzel; Kinderplätze sind nicht
-  verankert und können sich zwischen zwei Polls drehen. Bei wenigen Feldern
-  greift die Ringschwelle praktisch nie von selbst, dann hilft der Knopf
-  „ordnen".
+- Without the status hook the agent state is heuristic. Whether a session is
+  open is always certain; what it is doing is inferred from the transcript.
+  Subagents stay heuristic even with the hook, because their hook events carry
+  no state.
+- Without the hook, orange can be a long-running tool. A four-minute Bash run
+  looks like a permission prompt in the transcript, which is why the panel
+  says "unbeantworteter Tool-Aufruf" (unanswered tool call) rather than
+  permission. `Agent`, `Monitor`, `Workflow` and `TaskOutput` are excluded
+  because they run long by definition.
+- In auto mode, `PermissionRequest` also fires for commands that are allowed
+  immediately. Orange is then visible for a fraction of a second.
+- Sessions from another `~/.claude`, such as the Windows side under WSL, have
+  neither transcript nor registry entry here and are missing entirely.
+- The border of a field with worktrees shows the state of the main repo, not
+  that of the worktree.
+- Git runs per repo per refresh. With many fields that is the first
+  bottleneck.
+- Assignment through scratchpad paths is a prefix comparison and can be wrong
+  for paths that encode the same way.
+- A repo without a previous session never appears, not even as the child of a
+  field that had no session itself. The map shows places of work, not the
+  file system. A discovered sub-repo discovers nothing further.
+- Depth 2 is a bet on the usual folder structure. In one test, depth 3 found
+  64 children instead of 10, 54 of them extension clones under a single
+  field. The value is therefore in the config.
+- Rearranging only measures the ring of the root; child positions are not
+  anchored and can rotate between two polls. With few fields the ring
+  threshold hardly ever triggers on its own; then the "ordnen" button helps.
 
-## Entwickeln und prüfen
+## Development
 
 ```bash
-npm test                                                  # Fixture-Tests: Hook, Installer, Leser, decideState
-npm run collect | head -60                                # erhobener Zustand als JSON
-npm start -- --port 0                                     # zweiter Server auf einem freien Port
-node scripts/drive.mjs shot kolonie out.png               # Screenshot über einen eigenen Wegwerf-Server
+npm test                                                  # fixture tests: hook, installer, readers, decideState, leak check
+npm run collect | head -60                                # collected state as JSON
+npm start -- --port 0                                     # a second server on a free port
+node scripts/drive.mjs shot kolonie out.png               # screenshot through a throwaway server of its own
 node scripts/drive.mjs shot kolonie out.png --mode 3d --skin kit
-node scripts/drive.mjs run mein-szenario.mjs --planet kolonie
+node scripts/drive.mjs run my-scenario.mjs --planet kolonie
 ```
 
-Ohne lokale Config gibt es nur den Planeten `kolonie`. `drive.mjs` bricht
-bei einem unbekannten Planeten ab und nennt die vorhandenen; ohne
-`--planet` zeigt es den ersten.
+Without a local config there is only the planet `kolonie`. `drive.mjs` stops
+on an unknown planet and names the existing ones; without `--planet` it shows
+the first.
 
-`scripts/drive.mjs` startet je Lauf einen eigenen Server auf einem freien
-Port, fährt headless Chromium dagegen und beendet nur die eigene PID.
-Playwright ist absichtlich keine Projekt-Dependency; das Skript sucht
-`playwright-core` in `node_modules` oder in der globalen npm-Installation
-und Chromium unter `~/.cache/ms-playwright/`.
+`scripts/drive.mjs` starts a server of its own on a free port for each run,
+drives headless Chromium against it and stops only its own PID. Playwright is
+deliberately not a project dependency; the script looks for `playwright-core`
+in `node_modules` or in the global npm installation, and for Chromium under
+`~/.cache/ms-playwright/`.
 
-Die Fixture-Tests decken reine Funktionen ab. Alles, was aus `~/.claude`
-oder einem Repo liest, wird gegen Echtdaten geprüft, weil jeder bisher
-gefundene Fehler aus der Realität der Daten kam: ein Scratchpad ohne Anker,
-ein Worktree, ein Transkript mit 9 MB. Nach jeder Änderung am Renderer wird
-das Bild angesehen; ein korrekter State allein beweist nichts.
+The fixture tests cover pure functions. Everything that reads from
+`~/.claude` or a repo is checked against real data, because every bug found
+so far came from the reality of the data: a scratchpad without an anchor, a
+worktree, a 9 MB transcript. After every renderer change someone looks at the
+image; a correct state alone proves nothing.
 
-`git config core.hooksPath scripts/git-hooks` schaltet einen Leak-Check vor
-Commit und Push ein (`scripts/leak-check.mjs`): Er weist Pfade zurück, die in
-ein persönliches Arbeitsverzeichnis gehören, und auf Wunsch Zeilen, die
-Muster aus einer privaten Liste treffen.
+`git config core.hooksPath scripts/git-hooks` turns on a leak check before
+commit and push (`scripts/leak-check.mjs`). It rejects paths that belong in a
+personal working folder and, optionally, lines and commit identities matching
+patterns from a private list.
 
-## Herkunft
+## Origin
 
-Ausgangspunkt war ein Reel von @jarrenrocks: eine Hex-Kolonie auf einem
-Planeten, ein Feld pro Projekt, jede Figur ein Agent, blockierte Agenten mit
-leuchtender Sprechblase. Übernommen wurde die Einsicht dahinter, dass
-räumliche Abstraktion bei zweistelliger Agentenzahl besser skaliert als jede
-Liste. Nicht übernommen wurde die Engine: keine Isometrie, kein
-Planetenflug. Die 3D-Ansicht kam später dazu, zuerst aus Primitivgeometrie,
-dann mit dem Modell-Kit; laufende Figuren und Gesichter, anfangs bewusst
-weggelassen, folgten mit dem Kit.
+The starting point was an Instagram reel by @jarrenrocks: a hex colony on a
+planet, one field per project, every figure an agent, blocked agents under a
+glowing speech bubble. What carried over is the idea behind it, that spatial
+abstraction scales better than any list once agents reach double digits. The
+engine did not: no isometric view, no flight between planets. The 3D view came
+later, first from primitive geometry, then with the model kit; walking figures
+and faces, left out on purpose at first, followed with the kit.
 
-## Lizenz
+## License
 
-[PolyForm Internal Use License 1.0.0](LICENSE). Du darfst Agent Colony
-nutzen und für dich anpassen, auch in deiner Firma für die interne Arbeit.
-Weitergeben darfst du es nicht, weder unverändert noch verändert, und damit
-auch nicht verkaufen. Das ist bewusst keine Open-Source-Lizenz. Die Modelle
-und Bilder unter `public/assets/` haben eigene Lizenzen, aufgeführt in den
-`LICENSES.md` daneben.
+[PolyForm Internal Use License 1.0.0](LICENSE). You may use Agent Colony and
+adapt it for yourself, also inside your company for internal work. You may not
+distribute it, changed or unchanged, and so you may not sell it either. This
+is deliberately not an open source license. The models and images under
+`public/assets/` have their own licenses, listed in the `LICENSES.md` files
+next to them.
