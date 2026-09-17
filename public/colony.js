@@ -9,6 +9,7 @@ import { anchorsFor, forgetAnchors, loadAnchors, rememberAnchors } from './colon
 import { chipAt, loadCollapsed, toggleCollapsed } from './colony/collapse.mjs';
 import { hideDayTip, showDayTip } from './colony/daytip.mjs';
 import { layout, reorderNeeded } from './colony/hexmap.mjs';
+import { initI18n, locale } from './colony/i18n.mjs';
 import { renderHud } from './colony/hud.mjs';
 import { animateView, cancelViewAnim, draw } from './colony/map.mjs';
 import { renderPanel } from './colony/panel.mjs';
@@ -16,6 +17,9 @@ import * as R from './colony/renderer.mjs';
 import { dayAt } from './colony/skyline.mjs';
 import { app, canvas, planet, view } from './colony/store.mjs';
 import { clampZoom, fitTarget, hexAt, hexCenter, hexTarget, toWorld } from './colony/view.mjs';
+
+/* Die Sprachdateien werden einmal geholt, beim ersten Refresh. */
+let i18nReady = false;
 
 /* Wartet, bis die Shoelace-Komponenten im HUD hochgestuft UND gerendert
  * sind: whenDefined deckt das Hochstufen ab, der Frame danach das
@@ -27,6 +31,13 @@ async function refresh() {
   const res = await fetch('/api/state');
   app.state = await res.json();
   app.lastPollMs = Date.now();
+  // Die Sprache steht in der Config des Servers, also erst hier. Vor dem
+  // ersten renderHud() geladen, damit kein Zaehler mit einem Schluessel
+  // statt einer Beschriftung gebaut wird — die Zellen entstehen nur einmal.
+  if (!i18nReady) {
+    await initI18n(app.state.config?.language);
+    i18nReady = true;
+  }
   // Bezug fuer die Balkenhoehe: der staerkste Tag ueber alle Planeten, nicht
   // nur den sichtbaren — sonst spraenge jede Skyline beim Planetenwechsel.
   app.dayMax = Math.max(1, ...app.state.planets.flatMap((p) => p.hexes.flatMap((h) => h.commitsByDay ?? [])));
@@ -329,10 +340,9 @@ document.getElementById('close').onclick = () => {
  * ausgerichtet, damit die Anzeige nicht um bis zu einer Sekunde nachhinkt. */
 const nowEl = document.getElementById('now');
 function clock() {
-  nowEl.textContent = new Date().toLocaleTimeString('de-DE');
+  nowEl.textContent = new Date().toLocaleTimeString(locale());
   setTimeout(clock, 1000 - (Date.now() % 1000));
 }
-clock();
 
 addEventListener('resize', () => R.resize());
 // Der gemerkte Renderer wird aktiv, bevor irgendetwas zeichnet oder misst.
@@ -351,6 +361,9 @@ new ResizeObserver(([entry]) => {
 loadAnchors();
 loadCollapsed();
 await refresh();
+// Erst nach dem ersten Refresh: die Uhr schreibt in der Sprache aus der
+// Config, und die kennt `locale()` erst, wenn die Sprachdatei da ist.
+clock();
 /* Intervall aus der Config des Servers statt einer Konstante hier. Der erste
  * Refresh ist an dieser Stelle durch, der Wert steht also fest. Eine
  * Config-Aenderung wirkt erst nach einem Reload — das reicht. */

@@ -82,6 +82,10 @@ export async function collect(cfg) {
       wslDistro: cfg.wslDistro ?? process.env.WSL_DISTRO_NAME ?? null,
       // Das Frontend soll sein Intervall nicht raten muessen
       pollSeconds: cfg.pollSeconds ?? 3,
+      // Sprache der Beschriftungen (public/i18n/<code>.json). Vorgabe
+      // englisch; kennt der Browser die Datei nicht, bleibt es dabei und die
+      // Konsole sagt es (public/colony/i18n.mjs).
+      language: cfg.language ?? 'en',
       // Schattenwurf der 3D-Ansicht. Fehlt der Schluessel, bleibt es beim
       // bisherigen Bild: an. Aus spart die Schattenkarte je Frame (gemessen
       // 2026-09-16, fundus/messungen/2026-09-16-ressourcen).

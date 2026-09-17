@@ -9,6 +9,10 @@ import { DIRS, aggregateGit, cellsOf, descendantsOf, dryLayout, index, rootOf } 
 import { drawSkyline } from './skyline.mjs';
 import { COLORS, FILL, HEX, app, canvas, ctx, frameGap, planet, view } from './store.mjs';
 import { drawLabel, drawStatus } from './text.mjs';
+// Als Namensraum, nicht als `t`: in diesem Modul heisst die Animationszeit
+// `t` (draw(t), tick(t)) und wuerde den Import in jeder Zeichenfunktion
+// verdecken — `t is not a function` beim ersten Frame.
+import * as i18n from './i18n.mjs';
 import { cellCenter, fitTarget, hexCenter } from './view.mjs';
 
 /* Laufender Tween. Jeder Start erhoeht den Token; ein Frame mit veraltetem
@@ -210,11 +214,11 @@ function draw(t = 0) {
   // unten. Vorher sassen "Hangar"/"N ohne Projekt" in der Mitte - genau da,
   // wo drawAgents() den Kopf-Punkt zeichnet. Der Punkt lag auf der Ziffer,
   // "4 ohne Projekt" liess sich als "0 ohne Projekt" lesen.
-  drawLabel(s.x, s.y, 'Hangar', '#8b949e');
+  drawLabel(s.x, s.y, i18n.t('map.station'), '#8b949e');
   // Auch hier nur laufende Sessions (live()): die Zahl beschreibt die
   // Figuren darunter, nicht die Erhebung.
   const strays = live(p.station.agents);
-  drawStatus(s.x, s.y, strays.length + ' ohne Projekt', 'rgba(230,237,243,.75)');
+  drawStatus(s.x, s.y, i18n.t('map.strays', { n: strays.length }), 'rgba(230,237,243,.75)');
   drawAgents(s.x, s.y, strays, t);
 
   /* Silhouette und Bruecken zuerst: sie liegen unter den Waben. Farbe ist auf
@@ -460,7 +464,9 @@ function draw(t = 0) {
     drawStatus(
       c.x,
       c.y,
-      h.state === null ? 'kein Transkript' : h.sessions.total + '× · ' + h.daysSinceActivity + 'd',
+      h.state === null
+        ? i18n.t('map.noTranscript')
+        : i18n.t('map.hexStatus', { sessions: h.sessions.total, days: h.daysSinceActivity }),
       'rgba(230,237,243,.75)',
     );
 

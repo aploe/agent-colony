@@ -6,64 +6,41 @@
 import '@shoelace-style/shoelace/dist/components/tooltip/tooltip.js';
 
 import { escapeHtml, familyDot } from './html.mjs';
+import { locale, t } from './i18n.mjs';
 import { index, reorderWouldMove, rootOf } from './hexmap.mjs';
 import { fitView, mode, scheduleTick, setMode } from './renderer.mjs';
 import { app, planet } from './store.mjs';
 
 /* Die HUD-Zaehler.
  *
- * `tip` haengt einen Hover-Card an die Zahl: ein Satz, was ueberhaupt gezaehlt
- * wird, darunter die Aufschluesselung nach Projekt. Die Erklaersaetze nennen
- * die echten Schwellwerte aus `config/colony.config.json` — wer sie dort
- * aendert, muss sie hier nachziehen; ein zweiter Weg, sie zur Laufzeit
- * einzublenden, waere mehr Apparat als die Sache wert.
+ * Die Texte stehen nicht hier, sondern in den Sprachdateien
+ * (`public/i18n/<code>.json`) unter `hud.counts.<key>`: `label` an der Zahl,
+ * dazu die Hover-Card aus `title`, `hint` und - wo es eine Aufschluesselung
+ * gibt - `rows` als Einheitenzeile und `empty` fuer die leere Liste. Der
+ * `key` des Zaehlers ist damit gleichzeitig der Schluessel seiner
+ * Beschriftung; eine zweite Liste, die beides verbindet, gibt es nicht.
  *
- * `pick` filtert die Agenten aller Planeten, `rows` ist der Ausweg fuer
- * Zaehler, die keine Agenten zaehlen (Sessions, Hangar). */
+ * Die Erklaersaetze nennen die echten Schwellwerte aus
+ * `config/colony.config.json` - wer sie dort aendert, muss sie in allen
+ * Sprachdateien nachziehen; ein zweiter Weg, sie zur Laufzeit einzublenden,
+ * waere mehr Apparat als die Sache wert.
+ *
+ * Hier bleibt, was Verhalten ist: `pick` filtert die Agenten aller Planeten,
+ * `rows` ist der Ausweg fuer Zaehler, die keine Agenten zaehlen (Sessions,
+ * Hangar), `planets` zaehlt je Planet, `tone` faerbt die Zahl. */
 const HUD_GROUPS = [
   [
-    {
-      key: 'projects',
-      label: 'Projekte',
-      tip: {
-        title: 'Projekte',
-        hint: 'Ein Feld ist ein Git-Repo-Root, nicht ein Vault-Projekt. Sub-Repos unterhalb eines Feldes zaehlen mit. Gezaehlt wird ueber alle Planeten — auf der Karte liegt immer nur einer.',
-        rowsLabel: 'Felder',
-        planets: (p) => p.hexes.length,
-      },
-    },
-    {
-      key: 'satellites',
-      label: 'Sub-Repos',
-      tip: {
-        title: 'Sub-Repos',
-        hint: 'Eigene Git-Repos unterhalb eines Feldes, bis Tiefe 2 entdeckt. Sie zaehlen bei dirty und unpushed mit, auch wenn ihre Familie gerade zugeklappt ist — der Zaehler beschreibt den Bestand, nicht die Sicht.',
-        rowsLabel: 'Sub-Repos',
-        planets: (p) => p.hexes.filter((h) => h.parentId).length,
-      },
-    },
+    { key: 'projects', tip: { planets: (p) => p.hexes.length } },
+    { key: 'satellites', tip: { planets: (p) => p.hexes.filter((h) => h.parentId).length } },
     {
       key: 'dirty',
-      label: 'dirty',
       tone: 'alert',
-      tip: {
-        title: 'dirty',
-        ring: 'dirty',
-        hint: 'Uncommittete Aenderungen im Arbeitsverzeichnis, gezaehlt als Zeilen aus git status. Bei Repos mit Worktrees zaehlt nur das Hauptrepo — ein dirty Worktree bleibt hier unsichtbar.',
-        rowsLabel: 'Dateien',
-        empty: 'alles committet',
-        rows: (h) => (h.gitState === 'dirty' ? h.dirty : null),
-      },
+      tip: { ring: 'dirty', rows: (h) => (h.gitState === 'dirty' ? h.dirty : null) },
     },
     {
       key: 'unpushed',
-      label: 'unpushed',
       tip: {
-        title: 'unpushed',
         ring: 'unpushed',
-        hint: 'Commits liegen lokal und nicht auf dem Remote. Ein Repo ganz ohne Upstream zaehlt ebenfalls mit, sobald es zuletzt Commits gab — wie viele dort fehlen, ist nicht messbar.',
-        rowsLabel: 'Commits voraus',
-        empty: 'alles gepusht',
         rows: (h) =>
           h.gitState === 'unpushed'
             ? // Ohne Upstream ist `ahead` nicht ermittelbar. Dann steht hier ein
@@ -75,78 +52,20 @@ const HUD_GROUPS = [
     },
   ],
   [
-    {
-      key: 'agents',
-      label: 'Agenten',
-      tip: {
-        title: 'Agenten',
-        hint: 'Jede erhobene Session: Hauptsession oder Subagent, dessen Transkript in den letzten 24 Stunden geschrieben wurde. Aeltere fallen aus der Erhebung. Als Figur steht auf der Karte nur, wessen Fenster noch offen ist — alle uebrigen listet das Panel des Feldes mit "beendet".',
-        pick: () => true,
-      },
-    },
-    {
-      key: 'open',
-      label: 'offen',
-      tip: {
-        title: 'offene Fenster',
-        hint: 'Hauptsessions mit lebendem Prozess laut ~/.claude/sessions. Subagenten haben keinen eigenen Prozess und zaehlen nie mit. Sessions von der Windows-Seite fehlen hier.',
-        pick: (a) => a.open === true && !a.sub,
-      },
-    },
-    {
-      key: 'working',
-      label: 'arbeiten',
-      tone: 'ok',
-      tip: {
-        title: 'arbeitet',
-        dot: 'working',
-        hint: 'Am Transkript wurde in den letzten 3 Minuten geschrieben. Ob dahinter ein Tool laeuft oder der Agent nachdenkt, ist von aussen nicht zu unterscheiden.',
-        pick: (a) => a.state === 'working',
-      },
-    },
-    {
-      key: 'prompt',
-      label: 'fragen',
-      tone: 'alert',
-      tip: {
-        title: 'fragt',
-        dot: 'prompt',
-        hint: 'Ein Tool-Aufruf steht seit mindestens einer Minute offen, ohne Ergebnis — meist eine Permission-Abfrage, manchmal nur ein lang laufendes Tool.',
-        pick: (a) => a.state === 'prompt',
-      },
-    },
-    {
-      key: 'waiting',
-      label: 'warten',
-      tone: 'warn',
-      tip: {
-        title: 'wartet auf mich',
-        dot: 'waiting',
-        hint: 'Mit installiertem Status-Hook: der Turn ist beendet, seitdem keine Reaktion. Ohne Hook: 3 bis 90 Minuten Stille seit der letzten Antwort. Subagenten zaehlen hier nie mit — ihnen antwortet ihr Parent, nicht ich.',
-        pick: (a) => a.state === 'waiting',
-      },
-    },
-    {
-      key: 'sessions',
-      label: 'Sessions',
-      tip: {
-        title: 'Sessions',
-        hint: 'Alle Transkripte in den Projektverzeichnissen, auch lange abgeschlossene. Anders als die Agenten ohne 24-Stunden-Fenster — die Zahl waechst, sie faellt nie.',
-        rows: (h) => h.sessions.total,
-      },
-    },
-    {
-      key: 'unassigned',
-      label: 'im Hangar',
-      hideWhenZero: true,
-      tip: {
-        title: 'Hangar',
-        hint: 'Agenten, deren Arbeitsverzeichnis sich keinem Repo zuordnen liess — etwa weil im Transkript nur noch Scratchpad-Pfade stehen.',
-        station: true,
-      },
-    },
+    { key: 'agents', tip: { pick: () => true } },
+    { key: 'open', tip: { pick: (a) => a.open === true && !a.sub } },
+    { key: 'working', tone: 'ok', tip: { dot: 'working', pick: (a) => a.state === 'working' } },
+    { key: 'prompt', tone: 'alert', tip: { dot: 'prompt', pick: (a) => a.state === 'prompt' } },
+    { key: 'waiting', tone: 'warn', tip: { dot: 'waiting', pick: (a) => a.state === 'waiting' } },
+    { key: 'sessions', tip: { rows: (h) => h.sessions.total } },
+    { key: 'unassigned', hideWhenZero: true, tip: { station: true } },
   ],
 ];
+
+/* Ein Text, der in der Sprachdatei fehlen darf: `t()` gibt bei einem
+ * unbekannten Schluessel den Schluessel zurueck, und das ist hier die
+ * Antwort "gibt es nicht" statt einer Beschriftung. */
+const or = (key, fallback) => (t(key) === key ? fallback : t(key));
 
 const ROWS_MAX = 6;
 
@@ -174,7 +93,7 @@ function tipRows(tip) {
     }
     if (tip.station) {
       for (const a of p.station.agents) {
-        rows.push({ label: a.name ?? a.agentType ?? 'Session', sort: 1, text: '1' });
+        rows.push({ label: a.name ?? a.agentType ?? t('hud.session'), sort: 1, text: '1' });
       }
       continue;
     }
@@ -201,10 +120,13 @@ function tipRows(tip) {
 }
 
 /** Der Hover-Card-Inhalt. Leere Aufschluesselung wird benannt, nicht verschwiegen. */
-function tipContent(tip, value) {
+function tipContent(item, value) {
+  const { tip } = item;
+  const base = 'hud.counts.' + item.key + '.';
+  const rowsLabel = or(base + 'rows', null);
   const { shown, rest, restN } = tipRows(tip);
   const body = shown.length
-    ? (tip.rowsLabel ? '<li class="unit"><span>' + escapeHtml(tip.rowsLabel) + '</span></li>' : '') +
+    ? (rowsLabel ? '<li class="unit"><span>' + escapeHtml(rowsLabel) + '</span></li>' : '') +
       shown
         .map(
           (r) =>
@@ -212,14 +134,18 @@ function tipContent(tip, value) {
             (r.dot ?? '') + escapeHtml(r.label) + '</span><b>' + r.text + '</b></li>',
         )
         .join('') +
-      (rest ? '<li class="more"><span>' + rest + ' weitere</span><b>' + restN + '</b></li>' : '')
-    : '<li class="empty"><span>' + (tip.empty ?? 'gerade niemand') + '</span></li>';
+      (rest
+        ? '<li class="more"><span>' + escapeHtml(t('hud.more', { n: rest })) +
+          '</span><b>' + restN + '</b></li>'
+        : '')
+    : '<li class="empty"><span>' +
+      escapeHtml(or(base + 'empty', t('hud.empty'))) + '</span></li>';
   return (
     '<div class="tip-head">' +
     (tip.dot ? '<i class="dot ' + tip.dot + '"></i>' : '') +
     (tip.ring ? '<i class="ring ' + tip.ring + '"></i>' : '') +
-    '<span>' + escapeHtml(tip.title) + '</span><b>' + value + '</b></div>' +
-    '<p>' + escapeHtml(tip.hint) + '</p>' +
+    '<span>' + escapeHtml(t(base + 'title')) + '</span><b>' + value + '</b></div>' +
+    '<p>' + escapeHtml(t(base + 'hint')) + '</p>' +
     '<ul>' + body + '</ul>'
   );
 }
@@ -259,7 +185,7 @@ function buildHudCells() {
       const value = document.createElement('b');
       const trigger = document.createElement('span');
       trigger.className = 'trg';
-      trigger.append(value, ' ' + item.label);
+      trigger.append(value, ' ' + t('hud.counts.' + item.key + '.label'));
 
       let content = null;
       if (item.tip) {
@@ -297,7 +223,7 @@ function renderHud() {
     cell.hidden = item.hideWhenZero && !n;
     value.textContent = n;
     value.className = n && item.tone ? item.tone : '';
-    if (content) content.innerHTML = tipContent(item.tip, n);
+    if (content) content.innerHTML = tipContent(item, n);
   }
   /* Der Knopf sagt an, ob es etwas zu ordnen gibt. Meist gibt es das nicht:
    * nach dem ersten Druck liegt die Karte im Gewichts-Optimum, und der
@@ -307,9 +233,7 @@ function renderHud() {
   const reorderBtn = document.getElementById('reorder');
   const leer = !reorderWouldMove(planet()?.hexes ?? [], app.collapsed);
   reorderBtn.classList.toggle('leer', leer);
-  reorderBtn.title = leer
-    ? 'Nichts umzuordnen — die Karte liegt bereits nach Aufmerksamkeit'
-    : 'Karte einmal nach Aufmerksamkeit neu ordnen';
+  reorderBtn.title = leer ? t('hud.reorderIdle') : t('hud.reorderTitle');
 
   document.getElementById('mode3d').setAttribute('aria-pressed', String(mode() === '3d'));
   const kitBtn = document.getElementById('modekit');
@@ -319,9 +243,12 @@ function renderHud() {
   // Zustand einige Sekunden, `generatedAt` kann also aelter sein. Beides zu
   // zeigen waere Rauschen — der Datenstand haengt darum im title.
   const stamp = document.getElementById('stamp');
-  stamp.textContent = 'Poll ' + new Date(app.lastPollMs).toLocaleTimeString('de-DE');
-  stamp.title =
-    'Datenstand der Erhebung: ' + new Date(app.state.generatedAt).toLocaleString('de-DE');
+  stamp.textContent = t('hud.poll', {
+    time: new Date(app.lastPollMs).toLocaleTimeString(locale()),
+  });
+  stamp.title = t('hud.pollTitle', {
+    time: new Date(app.state.generatedAt).toLocaleString(locale()),
+  });
 
   const nav = document.getElementById('planets');
   if (nav.childElementCount !== app.state.planets.length) {

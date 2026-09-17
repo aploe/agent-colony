@@ -3,16 +3,14 @@
 
 import { groupAgents } from './agents.mjs';
 import { escapeHtml, familyDot } from './html.mjs';
+import { t } from './i18n.mjs';
 import { childrenOf, index, rootOf } from './hexmap.mjs';
 import { app, planet } from './store.mjs';
 
-const GIT_LABEL = {
-  dirty: 'uncommittete Änderungen',
-  unpushed: 'nicht gepusht',
-  clean: 'clean',
-  norepo: 'kein Git-Repo',
-  missing: 'Verzeichnis fehlt',
-};
+/* Der Git-Zustand in Worten. Die Texte stehen in den Sprachdateien unter
+ * `panel.git.<zustand>`; die Legende hat fuer dieselben Zustaende ihre eigenen,
+ * kuerzeren (`legend.git.*`) — im Panel ist Platz fuer einen ganzen Satz. */
+const gitLabel = (state) => t('panel.git.' + state);
 
 /* Rueckmeldung zum letzten Klick auf eine Agentenzeile, an deren Agenten-Key
  * gebunden. Sie muss ausserhalb des Renderns liegen, weil das Panel bei jedem
@@ -38,7 +36,7 @@ function vscodeLink(path) {
   if (!distro) return '';
   return (
     '<a class="open" href="vscode://vscode-remote/wsl+' +
-    encodeURIComponent(distro) + path + '">In VS Code öffnen</a>'
+    encodeURIComponent(distro) + path + '">' + escapeHtml(t('panel.openInVscode')) + '</a>'
   );
 }
 
@@ -54,10 +52,11 @@ function renderPanel(h) {
   // scheinbar bereit — dieselbe Regel wie beim Link darueber.
   const canOpen = Boolean(app.state?.config?.wslDistro);
 
-  let gitDetail = GIT_LABEL[h.gitState];
-  if (h.gitState === 'dirty') gitDetail += ` (${h.dirty} Dateien)`;
+  let gitDetail = gitLabel(h.gitState);
+  if (h.gitState === 'dirty') gitDetail += ' ' + t('panel.gitDirty', { n: h.dirty });
   if (h.gitState === 'unpushed') {
-    gitDetail += h.hasUpstream ? ` (${h.ahead} Commits)` : ' (kein Upstream)';
+    gitDetail +=
+      ' ' + (h.hasUpstream ? t('panel.gitAhead', { n: h.ahead }) : t('panel.gitNoUpstream'));
   }
 
   // `state: null` heisst: kein eigenes Transkript, keine eigene
@@ -67,14 +66,22 @@ function renderPanel(h) {
   // ehrliche Angabe fuer die Aktivitaets-Zeile, "stale · vor 0d" waere
   // gelogen.
   const rows = [
-    ['Aktivität', h.state === null ? '—' : `${h.state} · vor ${h.daysSinceActivity}d`],
-    ['Sessions', `${h.sessions.total} (${h.sessions.fresh} in 14d)`],
+    [
+      t('panel.row.activity'),
+      h.state === null
+        ? '—'
+        : t('panel.activity', { state: t('hexState.' + h.state), days: h.daysSinceActivity }),
+    ],
+    [
+      t('panel.row.sessions'),
+      t('panel.sessionsValue', { total: h.sessions.total, fresh: h.sessions.fresh }),
+    ],
     // Bewusst als Gesamtzahl beschriftet: das sind alle je gestarteten
     // Subagenten, nicht die Figuren, die gerade auf dem Feld stehen.
-    ['Subagenten', `${h.subagents} insgesamt`],
-    ['Git', gitDetail],
-    ['Branch', h.branch ?? '—'],
-    ['Commits 7d', h.isRepo ? h.commits7d : '—'],
+    [t('panel.row.subagents'), t('panel.subagentsValue', { n: h.subagents })],
+    [t('panel.row.git'), gitDetail],
+    [t('panel.row.branch'), h.branch ?? '—'],
+    [t('panel.row.commits7d'), h.isRepo ? h.commits7d : '—'],
   ];
 
   // Name und Aufgabe stammen aus dem .meta.json neben dem Transkript. Fehlt
@@ -116,8 +123,8 @@ function renderPanel(h) {
     return (
       ' <button type="button" class="open-session" data-session="' +
       escapeHtml(a.sessionId) + '" data-key="' + escapeHtml(a.key) + '" title="' +
-      (a.sub ? 'Hauptsession dieses Agenten' : 'Diese Session') +
-      ' als Tab in VS Code öffnen">öffnen</button>'
+      escapeHtml(t(a.sub ? 'panel.openParentTitle' : 'panel.openOwnTitle')) +
+      '">' + escapeHtml(t('panel.open')) + '</button>'
     );
   };
 
@@ -133,18 +140,25 @@ function renderPanel(h) {
     // den Knopf.
     return '<div class="agent' + (app.markedAgent === a.key ? ' marked' : '') +
     '" data-key="' + escapeHtml(a.key) + '">' +
-    '<span class="tag ' + a.state + '">' + a.state + '</span> ' +
-    a.ageMinutes + ' min' +
-    (a.open === true ? ' · offen' : a.open === false ? ' · beendet' : '') +
-    (a.statusSource === 'hook' ? ' <span class="tag src">gemeldet</span>' : '') +
+    '<span class="tag ' + a.state + '">' + escapeHtml(t('agent.' + a.state)) + '</span> ' +
+    escapeHtml(t('panel.minutes', { n: a.ageMinutes })) +
+    (a.open === true
+      ? ' · ' + escapeHtml(t('panel.agentOpen'))
+      : a.open === false
+        ? ' · ' + escapeHtml(t('panel.agentEnded'))
+        : '') +
+    (a.statusSource === 'hook'
+      ? ' <span class="tag src">' + escapeHtml(t('panel.reported')) + '</span>'
+      : '') +
     (n > 0
-      ? ' <span class="tag src">' + n + (n === 1 ? ' Subagent läuft' : ' Subagenten laufen') + '</span>'
+      ? ' <span class="tag src">' + escapeHtml(t('panel.liveSubagents', { n })) + '</span>'
       : '') +
     (a.name ? ' <b>' + escapeHtml(a.name) + '</b>' : '') +
     (a.gitBranch ? ' <span class="tag">' + escapeHtml(a.gitBranch) + '</span>' : '') +
     (a.pending
-      ? '<br><span class="pending">unbeantworteter Tool-Aufruf: ' +
-        escapeHtml(a.pending.tool) + ', seit ' + a.pending.minutes + ' min</span>'
+      ? '<br><span class="pending">' +
+        escapeHtml(t('panel.pending', { tool: a.pending.tool, n: a.pending.minutes })) +
+        '</span>'
       : '') +
     (a.task ? '<br><span class="task">' + escapeHtml(a.task) + '</span>' : '') +
     '<br><code>' + escapeHtml(a.cwd) + '</code>' +
@@ -163,7 +177,7 @@ function renderPanel(h) {
             '<li>' +
             (g.head
               ? agentEntry(g.head)
-              : '<span class="tag">Hauptsession nicht auf diesem Feld</span>') +
+              : '<span class="tag">' + escapeHtml(t('panel.headElsewhere')) + '</span>') +
             (g.kids.length
               ? '<ul class="kids">' +
                 g.kids.map((k) => '<li>' + agentEntry(k) + '</li>').join('') +
@@ -172,12 +186,12 @@ function renderPanel(h) {
             '</li>',
         )
         .join('')
-    : '<li style="color:var(--muted)">keine aktiven Agenten</li>';
+    : '<li style="color:var(--muted)">' + escapeHtml(t('panel.noAgents')) + '</li>';
 
   // Mehrere Verzeichnisse = Worktrees oder Unterordner desselben Repos
   const memberList =
     h.members.length > 1
-      ? '<dl><dt>Auch</dt><dd>' +
+      ? '<dl><dt>' + escapeHtml(t('panel.row.also')) + '</dt><dd>' +
         h.members
           .filter((m) => m !== h.path)
           .map((m) => '<code>' + escapeHtml(m) + '</code>')
@@ -192,17 +206,17 @@ function renderPanel(h) {
   // Der Deckel ist eine Aussage, keine Fehlanzeige: das Feld hat Unter-Repos,
   // sie sind nur zu viele fuer eine Familie.
   const cappedRow = h.satellitesCapped
-    ? '<dl><dt>Unter-Repos</dt><dd>' + h.satellitesCapped +
-      ' — zu viele für eine Familie, nicht als Waben angelegt</dd></dl>'
+    ? '<dl><dt>' + escapeHtml(t('panel.row.capped')) + '</dt><dd>' +
+      escapeHtml(t('panel.cappedValue', { n: h.satellitesCapped })) + '</dd></dl>'
     : '';
 
   const familyRow = kids.length
-    ? '<dl><dt>Sub-Repos</dt><dd><ul class="subs">' +
+    ? '<dl><dt>' + escapeHtml(t('panel.row.subRepos')) + '</dt><dd><ul class="subs">' +
       kids.map((k) =>
         '<li><code>' + escapeHtml(k.title) + '</code>' +
-        '<span class="tag">' + escapeHtml(GIT_LABEL[k.gitState]) + '</span></li>').join('') +
+        '<span class="tag">' + escapeHtml(gitLabel(k.gitState)) + '</span></li>').join('') +
       '</ul></dd></dl><button id="collapse" class="open alt">' +
-      (app.collapsed.has(h.id) ? 'Familie aufklappen' : 'Familie zuklappen') +
+      escapeHtml(t(app.collapsed.has(h.id) ? 'panel.expandFamily' : 'panel.collapseFamily')) +
       '</button>'
     : '';
 
@@ -211,8 +225,10 @@ function renderPanel(h) {
   // Link auf dem Pfad selbst, damit der Pfadtext weiter reiner Text bleibt
   // und wie ueberall sonst im Panel selektierbar ist.
   const parentRow = parent
-    ? '<dl><dt>Gehört zu</dt><dd><code>' + escapeHtml(parent.path) + '</code></dd></dl>' +
-      '<button id="jump-parent" class="open alt">Zum Parent springen</button>'
+    ? '<dl><dt>' + escapeHtml(t('panel.row.parent')) + '</dt><dd><code>' +
+      escapeHtml(parent.path) + '</code></dd></dl>' +
+      '<button id="jump-parent" class="open alt">' +
+      escapeHtml(t('panel.jumpParent')) + '</button>'
     : '';
 
   // Der Familienpunkt steht am Titel jedes Familienmitglieds, Wurzel
@@ -230,7 +246,8 @@ function renderPanel(h) {
     memberList + parentRow + familyRow + cappedRow +
     vscodeLink(h.path) +
     (h.note
-      ? ' <a class="open alt" href="' + h.note.obsidianUri + '">Notiz: ' + escapeHtml(h.note.title) + '</a>'
+      ? ' <a class="open alt" href="' + h.note.obsidianUri + '">' +
+        escapeHtml(t('panel.note', { title: h.note.title })) + '</a>'
       : '') +
     '<ul>' + agentList + '</ul>';
 
@@ -260,7 +277,7 @@ function renderPanel(h) {
     if (busy) return;
     busy = true;
     const key = el.dataset.key;
-    note = { key, hexId: h.id, text: 'öffnet in VS Code …', kind: 'wait' };
+    note = { key, hexId: h.id, text: t('panel.opening'), kind: 'wait' };
     renderPanel(h);
     let done;
     try {
@@ -272,7 +289,12 @@ function renderPanel(h) {
       const data = await res.json().catch(() => ({}));
       done = data.ok
         ? null
-        : { key, hexId: h.id, text: data.error ?? `Fehler ${res.status}`, kind: 'bad' };
+        : {
+            key,
+            hexId: h.id,
+            text: data.error ?? t('panel.error', { status: res.status }),
+            kind: 'bad',
+          };
     } catch (err) {
       done = { key, hexId: h.id, text: err.message, kind: 'bad' };
     }

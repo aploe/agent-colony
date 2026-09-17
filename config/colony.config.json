@@ -2,6 +2,7 @@
   "port": 4173,
   "host": "127.0.0.1",
   "pollSeconds": 5,
+  "language": "en",
   "gitCacheSeconds": 20,
   "shadows": false,
   "maxFps": 30,

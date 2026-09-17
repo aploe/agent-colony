@@ -6,6 +6,7 @@
 import '@shoelace-style/shoelace/dist/components/popup/popup.js';
 
 import { escapeHtml } from './html.mjs';
+import { locale, t } from './i18n.mjs';
 import { DAY_BASE, DAY_PITCH, DAY_W, DAY_X0, dayHeight } from './skyline.mjs';
 import { app, view } from './store.mjs';
 
@@ -39,7 +40,7 @@ function dayLabel(i) {
   const key = app.state?.days?.[i];
   if (!key) return '—';
   // Mittag, damit die Zeitzone das Datum nicht kippt
-  return new Date(key + 'T12:00:00').toLocaleDateString('de-DE', {
+  return new Date(key + 'T12:00:00').toLocaleDateString(locale(), {
     weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric',
   });
 }
@@ -50,11 +51,10 @@ function dayTipHtml(h, i) {
   const total = days.reduce((a, b) => a + b, 0);
   return (
     '<div class="tip-head"><span>' + escapeHtml(dayLabel(i)) + '</span><b>' + n + '</b></div>' +
-    '<p>Commits in ' + escapeHtml(h.title) + ' an diesem Tag, Committer-Datum. ' +
-    'Die Balkenhoehe misst sich am staerksten Tag aller Projekte (' + app.dayMax + ').</p>' +
-    '<ul><li class="unit"><span>Commits</span></li>' +
-    '<li><span>letzte 14 Tage</span><b>' + total + '</b></li>' +
-    '<li><span>letzte 7 Tage</span><b>' + h.commits7d + '</b></li></ul>'
+    '<p>' + escapeHtml(t('daytip.hint', { title: h.title, max: app.dayMax })) + '</p>' +
+    '<ul><li class="unit"><span>' + escapeHtml(t('daytip.unit')) + '</span></li>' +
+    '<li><span>' + escapeHtml(t('daytip.last14')) + '</span><b>' + total + '</b></li>' +
+    '<li><span>' + escapeHtml(t('daytip.last7')) + '</span><b>' + h.commits7d + '</b></li></ul>'
   );
 }
 

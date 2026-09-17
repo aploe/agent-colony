@@ -9,7 +9,11 @@ die Kommentare an `agents[].state` sind die Entscheidungslogik von
   days: [ 'YYYY-MM-DD' x14 ],             // Kalendertage zu hex.commitsByDay, aeltester zuerst
   config: { wslDistro,                    // fuer den VS-Code-Link im Panel und das Oeffnen
                                           // einer Session (src/vscode.mjs); null = kein Link
-    pollSeconds, reorder: { ringDelta, cooldownSeconds, animateMs } },
+    pollSeconds,
+    language,                             // Sprache der Beschriftungen, Dateiname unter
+                                          // public/i18n/ (Vorgabe 'en'); ?lang= in der URL
+                                          // schlaegt sie (public/colony/i18n.mjs)
+    reorder: { ringDelta, cooldownSeconds, animateMs } },
   counts: { projects, satellites, sessions, agents, open,
     hookStatus,                            // Figuren, deren state per Hook gemeldet statt geraten ist
     prompt, working, waiting, dirty, unpushed, unassigned },

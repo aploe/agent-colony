@@ -1,0 +1,189 @@
+{
+  "meta": {
+    "name": "Français",
+    "locale": "fr-FR"
+  },
+
+  "hud": {
+    "reorder": "ranger",
+    "reorderTitle": "Ranger la carte une fois selon l'attention",
+    "reorderIdle": "Rien à ranger — la carte est déjà rangée selon l'attention",
+    "mode3dTitle": "La colonie en scène 3D : glisser avec le bouton gauche fait tourner, avec le droit déplace, la molette zoome",
+    "kitTitle": "Des modèles au lieu de primitives : terrain KayKit, piles de caisses, figurines. Seulement en 3D.",
+    "poll": "Relevé {time}",
+    "pollTitle": "État des données du relevé : {time}",
+    "more": "{n} de plus",
+    "empty": "personne pour le moment",
+    "session": "Session",
+    "counts": {
+      "projects": {
+        "label": "Projets",
+        "title": "Projets",
+        "hint": "Une case est la racine d'un dépôt Git, pas un projet du vault. Les sous-dépôts situés sous une case comptent aussi. Le décompte porte sur toutes les planètes — la carte n'en montre qu'une.",
+        "rows": "Cases"
+      },
+      "satellites": {
+        "label": "Sous-dépôts",
+        "title": "Sous-dépôts",
+        "hint": "Dépôts Git propres situés sous une case, découverts jusqu'à la profondeur 2. Ils comptent dans dirty et unpushed même quand leur famille est repliée — le compteur décrit ce qui existe, pas ce qui est visible.",
+        "rows": "Sous-dépôts"
+      },
+      "dirty": {
+        "label": "dirty",
+        "title": "dirty",
+        "hint": "Modifications non validées dans le répertoire de travail, comptées comme lignes de git status. Pour les dépôts avec worktrees, seul le dépôt principal compte — un worktree dirty reste invisible ici.",
+        "rows": "Fichiers",
+        "empty": "tout est validé"
+      },
+      "unpushed": {
+        "label": "unpushed",
+        "title": "unpushed",
+        "hint": "Des commits sont en local et pas sur le remote. Un dépôt sans upstream compte également dès qu'il y a eu des commits — combien il en manque n'est pas mesurable.",
+        "rows": "Commits d'avance",
+        "empty": "tout est poussé"
+      },
+      "agents": {
+        "label": "Agents",
+        "title": "Agents",
+        "hint": "Chaque session relevée : session principale ou sous-agent dont la transcription a été écrite dans les dernières 24 heures. Les plus anciennes sortent du relevé. Seuls ceux dont la fenêtre est encore ouverte ont une figurine sur la carte — le panneau de la case liste tous les autres comme « terminé »."
+      },
+      "open": {
+        "label": "ouvertes",
+        "title": "fenêtres ouvertes",
+        "hint": "Sessions principales avec un processus vivant d'après ~/.claude/sessions. Les sous-agents n'ont pas de processus propre et ne comptent jamais. Les sessions du côté Windows manquent ici."
+      },
+      "working": {
+        "label": "travaillent",
+        "title": "travaille",
+        "hint": "La transcription a été écrite dans les 3 dernières minutes. Savoir si un outil tourne derrière ou si l'agent réfléchit ne se distingue pas de l'extérieur."
+      },
+      "prompt": {
+        "label": "demandent",
+        "title": "demande",
+        "hint": "Un appel d'outil est ouvert depuis au moins une minute sans résultat — le plus souvent une demande de permission, parfois juste un outil lent."
+      },
+      "waiting": {
+        "label": "attendent",
+        "title": "m'attend",
+        "hint": "Avec le hook de statut installé : le tour est terminé et rien depuis. Sans hook : 3 à 90 minutes de silence depuis la dernière réponse. Les sous-agents ne comptent jamais ici — c'est leur parent qui leur répond, pas moi."
+      },
+      "sessions": {
+        "label": "Sessions",
+        "title": "Sessions",
+        "hint": "Toutes les transcriptions des répertoires de projet, y compris celles terminées depuis longtemps. Contrairement aux agents, sans fenêtre de 24 heures — le nombre grandit, il ne baisse jamais."
+      },
+      "unassigned": {
+        "label": "au hangar",
+        "title": "Hangar",
+        "hint": "Agents dont le répertoire de travail n'a pu être rattaché à aucun dépôt — parce que la transcription ne contient plus que des chemins de scratchpad, par exemple."
+      }
+    }
+  },
+
+  "map": {
+    "station": "Hangar",
+    "strays": "{n} sans projet",
+    "noTranscript": "sans transcript",
+    "hexStatus": "{sessions}× · {days}j",
+    "chipTitle": "Déplier ou replier la famille"
+  },
+
+  "legend": {
+    "projects": "Projets",
+    "fill": "Surface :",
+    "ring": "Bordure :",
+    "state": {
+      "active": "actif ≤7j",
+      "quiet": "calme ≤30j",
+      "stale": "stale >30j"
+    },
+    "git": {
+      "dirty": "dirty",
+      "unpushed": "unpushed",
+      "clean": "clean",
+      "norepo": "pas de dépôt",
+      "missing": "manquant"
+    },
+    "agents": "Agents",
+    "agent": {
+      "working": "travaille",
+      "prompt": "demande (appel d'outil ouvert)",
+      "waiting": "m'attend",
+      "idle": "idle",
+      "kid": "Sous-agent"
+    },
+    "credits": "Modèles : KayKit (CC0) · Kenney Nature Kit (CC0) · Little Astronaut : jellevermandere (CC-BY) · Flying Robot : mshayan02 (CC-BY)",
+    "creditsTitle": "Licences et sources : public/assets/kit/LICENSES.md"
+  },
+
+  "panel": {
+    "close": "Fermer",
+    "open": "ouvrir",
+    "opening": "ouverture dans VS Code …",
+    "error": "Erreur {status}",
+    "openInVscode": "Ouvrir dans VS Code",
+    "openOwnTitle": "Ouvrir cette session dans un onglet VS Code",
+    "openParentTitle": "Ouvrir la session principale de cet agent dans un onglet VS Code",
+    "row": {
+      "activity": "Activité",
+      "sessions": "Sessions",
+      "subagents": "Sous-agents",
+      "git": "Git",
+      "branch": "Branche",
+      "commits7d": "Commits 7j",
+      "also": "Aussi",
+      "subRepos": "Sous-dépôts",
+      "capped": "Sous-dépôts",
+      "parent": "Rattaché à"
+    },
+    "activity": "{state} · il y a {days}j",
+    "sessionsValue": "{total} ({fresh} en 14j)",
+    "subagentsValue": "{n} en tout",
+    "cappedValue": "{n} — trop pour une seule famille, pas posés comme cases",
+    "expandFamily": "Déplier la famille",
+    "collapseFamily": "Replier la famille",
+    "jumpParent": "Aller au parent",
+    "note": "Note : {title}",
+    "headElsewhere": "Session principale pas sur cette case",
+    "noAgents": "aucun agent actif",
+    "minutes": "{n} min",
+    "agentOpen": "ouverte",
+    "agentEnded": "terminée",
+    "reported": "signalé",
+    "liveSubagents": {
+      "one": "{n} sous-agent en cours",
+      "other": "{n} sous-agents en cours"
+    },
+    "pending": "appel d'outil sans réponse : {tool}, depuis {n} min",
+    "git": {
+      "dirty": "modifications non validées",
+      "unpushed": "pas poussé",
+      "clean": "clean",
+      "norepo": "pas de dépôt Git",
+      "missing": "répertoire manquant"
+    },
+    "gitDirty": "({n} fichiers)",
+    "gitAhead": "({n} commits)",
+    "gitNoUpstream": "(pas d'upstream)"
+  },
+
+  "hexState": {
+    "active": "actif",
+    "quiet": "calme",
+    "stale": "stale"
+  },
+
+  "agent": {
+    "working": "travaille",
+    "prompt": "demande",
+    "waiting": "attend",
+    "idle": "idle"
+  },
+
+  "daytip": {
+    "hint": "Commits dans {title} ce jour-là, date du committer. La hauteur de la barre se mesure au jour le plus chargé de tous les projets ({max}).",
+    "unit": "Commits",
+    "last14": "14 derniers jours",
+    "last7": "7 derniers jours"
+  }
+}

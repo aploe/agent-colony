@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de" class="sl-theme-dark">
+<html lang="en" class="sl-theme-dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,9 +13,14 @@
   <nav id="planets"></nav>
   <span id="counts"></span>
   <span id="tools">
-    <button id="reorder" title="Karte einmal nach Aufmerksamkeit neu ordnen">ordnen</button>
-    <button id="mode3d" aria-pressed="false" title="Kolonie als 3D-Szene: links ziehen dreht, rechts ziehen schiebt, Rad zoomt">3D</button>
-    <button id="modekit" aria-pressed="false" hidden title="Modelle statt Primitive: KayKit-Gelaende, Kistenstapel, Figuren. Nur in 3D.">Kit</button>
+    <!-- Die Texte hier sind Englisch, die Vorgabesprache. Beim Laden setzt
+         public/colony/i18n.mjs sie auf die Sprache aus der Config um; die
+         Schluessel stehen in data-i18n (Text), data-i18n-title (title) und
+         data-i18n-label (aria-label). Der title von "ordnen" fehlt bewusst:
+         hud.mjs setzt ihn je Zustand, das waere eine zweite Quelle. -->
+    <button id="reorder" data-i18n="hud.reorder">arrange</button>
+    <button id="mode3d" aria-pressed="false" data-i18n-title="hud.mode3dTitle" title="Colony as a 3D scene: drag with the left button to rotate, with the right to pan, wheel zooms">3D</button>
+    <button id="modekit" aria-pressed="false" hidden data-i18n-title="hud.kitTitle" title="Models instead of primitives: KayKit terrain, crate stacks, figures. 3D only.">Kit</button>
   </span>
   <div id="clock">
     <time id="now"></time>
@@ -28,34 +33,34 @@
 <div id="overlay3d" hidden></div>
 
 <aside id="panel" hidden>
-  <button id="close" aria-label="Schliessen">&times;</button>
+  <button id="close" aria-label="Close" data-i18n-label="panel.close">&times;</button>
   <div id="panel-body"></div>
 </aside>
 
 <footer id="legend">
   <div class="grp">
-    <b>Projekte</b>
-    <span class="sub">Fläche:</span>
-    <span><i class="sw active"></i>aktiv &le;7d</span>
-    <span><i class="sw quiet"></i>ruhig &le;30d</span>
-    <span><i class="sw stale"></i>stale &gt;30d</span>
-    <span class="sub">Rand:</span>
-    <span><i class="ring dirty"></i>dirty</span>
-    <span><i class="ring unpushed"></i>unpushed</span>
-    <span><i class="ring clean"></i>clean</span>
-    <span><i class="ring norepo"></i>kein Repo</span>
-    <span><i class="ring missing"></i>fehlt</span>
+    <b data-i18n="legend.projects">Projects</b>
+    <span class="sub" data-i18n="legend.fill">Fill:</span>
+    <span><i class="sw active"></i><span data-i18n="legend.state.active">active &le;7d</span></span>
+    <span><i class="sw quiet"></i><span data-i18n="legend.state.quiet">quiet &le;30d</span></span>
+    <span><i class="sw stale"></i><span data-i18n="legend.state.stale">stale &gt;30d</span></span>
+    <span class="sub" data-i18n="legend.ring">Border:</span>
+    <span><i class="ring dirty"></i><span data-i18n="legend.git.dirty">dirty</span></span>
+    <span><i class="ring unpushed"></i><span data-i18n="legend.git.unpushed">unpushed</span></span>
+    <span><i class="ring clean"></i><span data-i18n="legend.git.clean">clean</span></span>
+    <span><i class="ring norepo"></i><span data-i18n="legend.git.norepo">no repo</span></span>
+    <span><i class="ring missing"></i><span data-i18n="legend.git.missing">missing</span></span>
   </div>
   <div class="grp">
-    <b>Agenten</b>
-    <span><i class="dot working"></i>arbeitet</span>
-    <span><i class="dot prompt"></i>fragt (Tool-Aufruf offen)</span>
-    <span><i class="dot waiting"></i>wartet auf mich</span>
-    <span><i class="dot idle"></i>idle</span>
-    <span><i class="dot kid"></i>Subagent</span>
+    <b data-i18n="legend.agents">Agents</b>
+    <span><i class="dot working"></i><span data-i18n="legend.agent.working">working</span></span>
+    <span><i class="dot prompt"></i><span data-i18n="legend.agent.prompt">asking (tool call open)</span></span>
+    <span><i class="dot waiting"></i><span data-i18n="legend.agent.waiting">waiting for me</span></span>
+    <span><i class="dot idle"></i><span data-i18n="legend.agent.idle">idle</span></span>
+    <span><i class="dot kid"></i><span data-i18n="legend.agent.kid">Subagent</span></span>
   </div>
   <div class="grp credits">
-    <span title="Lizenzen und Quellen: public/assets/kit/LICENSES.md">Modelle: KayKit (CC0) · Kenney Nature Kit (CC0) · Little Astronaut: jellevermandere (CC-BY) · Flying Robot: mshayan02 (CC-BY)</span>
+    <span title="Licences and sources: public/assets/kit/LICENSES.md" data-i18n-title="legend.creditsTitle" data-i18n="legend.credits">Models: KayKit (CC0) · Kenney Nature Kit (CC0) · Little Astronaut: jellevermandere (CC-BY) · Flying Robot: mshayan02 (CC-BY)</span>
   </div>
 </footer>
 

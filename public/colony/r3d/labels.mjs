@@ -14,6 +14,8 @@ import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { CHIP_DX } from '../collapse.mjs';
 import { descendantsOf } from '../hexmap.mjs';
+// Namensraum statt `t`: `t` ist hier lokal der Titel-Span (siehe setText).
+import * as i18n from '../i18n.mjs';
 import { HEX, app } from '../store.mjs';
 import * as bend from './bend.mjs';
 import { live, worldOf } from './world.mjs';
@@ -55,7 +57,7 @@ function chip(h) {
   const el = document.createElement('button');
   el.type = 'button';
   el.className = 'chip3d';
-  el.title = 'Familie auf- oder zuklappen';
+  el.title = i18n.t('map.chipTitle');
   el.onclick = (e) => {
     e.stopPropagation();
     app.toggleFamily?.(h.id);
@@ -89,7 +91,7 @@ function sync(p, idx, now) {
   const sw = worldOf(p.station, idx, now);
   const st = label('station', true);
   // Zahl wie in 2D: sie beschreibt die Figuren darunter, also nur laufende Sessions
-  setText(st, 'Hangar', live(p.station.agents).length + ' ohne Projekt');
+  setText(st, i18n.t('map.station'), i18n.t('map.strays', { n: live(p.station.agents).length }));
   bend.place(st, sw.x, sw.y + LABEL_Y, sw.z + LABEL_DZ);
   st.visible = true;
   seen.add('station');
@@ -102,7 +104,13 @@ function sync(p, idx, now) {
     const w = worldOf(h, idx, now);
     // Dieselbe Statuszeile wie drawStatus() in map.mjs; `state: null` heisst
     // nur "kein Transkript", nicht "kein Agent hier"
-    setText(o, h.title, h.state === null ? 'kein Transkript' : h.sessions.total + '× · ' + h.daysSinceActivity + 'd');
+    setText(
+      o,
+      h.title,
+      h.state === null
+        ? i18n.t('map.noTranscript')
+        : i18n.t('map.hexStatus', { sessions: h.sessions.total, days: h.daysSinceActivity }),
+    );
     bend.place(o, w.x, w.y + LABEL_Y, w.z + LABEL_DZ);
     if (h.satellites) {
       const c = chip(h);

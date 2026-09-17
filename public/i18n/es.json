@@ -1,0 +1,189 @@
+{
+  "meta": {
+    "name": "Español",
+    "locale": "es-ES"
+  },
+
+  "hud": {
+    "reorder": "ordenar",
+    "reorderTitle": "Ordenar el mapa una vez según la atención",
+    "reorderIdle": "Nada que ordenar — el mapa ya está ordenado según la atención",
+    "mode3dTitle": "La colonia como escena 3D: arrastrar con el botón izquierdo gira, con el derecho desplaza, la rueda hace zoom",
+    "kitTitle": "Modelos en lugar de primitivas: terreno KayKit, pilas de cajas, figuras. Solo en 3D.",
+    "poll": "Sondeo {time}",
+    "pollTitle": "Datos recogidos a las: {time}",
+    "more": "{n} más",
+    "empty": "ahora mismo nadie",
+    "session": "Sesión",
+    "counts": {
+      "projects": {
+        "label": "Proyectos",
+        "title": "Proyectos",
+        "hint": "Una casilla es la raíz de un repositorio Git, no un proyecto del vault. Los sub-repos por debajo de una casilla también cuentan. Se cuenta a través de todos los planetas — en el mapa solo se ve uno.",
+        "rows": "Casillas"
+      },
+      "satellites": {
+        "label": "Sub-repos",
+        "title": "Sub-repos",
+        "hint": "Repositorios Git propios por debajo de una casilla, detectados hasta profundidad 2. Cuentan en dirty y unpushed aunque su familia esté plegada — el contador describe lo que existe, no lo que se ve.",
+        "rows": "Sub-repos"
+      },
+      "dirty": {
+        "label": "dirty",
+        "title": "dirty",
+        "hint": "Cambios sin commit en el directorio de trabajo, contados como líneas de git status. En repos con worktrees solo cuenta el repo principal — un worktree dirty queda invisible aquí.",
+        "rows": "Archivos",
+        "empty": "todo con commit"
+      },
+      "unpushed": {
+        "label": "unpushed",
+        "title": "unpushed",
+        "hint": "Hay commits en local que no están en el remoto. Un repo sin upstream también cuenta en cuanto ha habido commits — cuántos faltan allí no se puede medir.",
+        "rows": "Commits por delante",
+        "empty": "todo enviado"
+      },
+      "agents": {
+        "label": "Agentes",
+        "title": "Agentes",
+        "hint": "Cada sesión recogida: sesión principal o subagente cuyo transcript se escribió en las últimas 24 horas. Las más antiguas salen de la recogida. En el mapa solo hay figura para quien todavía tiene la ventana abierta — al resto los lista el panel de la casilla como \"terminado\"."
+      },
+      "open": {
+        "label": "abiertas",
+        "title": "ventanas abiertas",
+        "hint": "Sesiones principales con proceso vivo según ~/.claude/sessions. Los subagentes no tienen proceso propio y nunca cuentan. Las sesiones del lado de Windows faltan aquí."
+      },
+      "working": {
+        "label": "trabajan",
+        "title": "trabaja",
+        "hint": "Se escribió en el transcript en los últimos 3 minutos. Si detrás corre una herramienta o el agente está pensando no se distingue desde fuera."
+      },
+      "prompt": {
+        "label": "preguntan",
+        "title": "pregunta",
+        "hint": "Una llamada a herramienta lleva abierta al menos un minuto sin resultado — normalmente una petición de permiso, a veces solo una herramienta lenta."
+      },
+      "waiting": {
+        "label": "esperan",
+        "title": "me espera",
+        "hint": "Con el hook de estado instalado: el turno terminó y desde entonces no ha pasado nada. Sin hook: entre 3 y 90 minutos de silencio desde la última respuesta. Los subagentes nunca cuentan aquí — les responde su padre, no yo."
+      },
+      "sessions": {
+        "label": "Sesiones",
+        "title": "Sesiones",
+        "hint": "Todos los transcripts de los directorios de proyecto, también los terminados hace mucho. A diferencia de los agentes, sin ventana de 24 horas — la cifra crece, nunca baja."
+      },
+      "unassigned": {
+        "label": "en el hangar",
+        "title": "Hangar",
+        "hint": "Agentes cuyo directorio de trabajo no se pudo asignar a ningún repo — por ejemplo porque en el transcript solo quedan rutas de scratchpad."
+      }
+    }
+  },
+
+  "map": {
+    "station": "Hangar",
+    "strays": "{n} sin proyecto",
+    "noTranscript": "sin transcript",
+    "hexStatus": "{sessions}× · {days}d",
+    "chipTitle": "Desplegar o plegar la familia"
+  },
+
+  "legend": {
+    "projects": "Proyectos",
+    "fill": "Relleno:",
+    "ring": "Borde:",
+    "state": {
+      "active": "activo ≤7d",
+      "quiet": "tranquilo ≤30d",
+      "stale": "stale >30d"
+    },
+    "git": {
+      "dirty": "dirty",
+      "unpushed": "unpushed",
+      "clean": "clean",
+      "norepo": "sin repo",
+      "missing": "falta"
+    },
+    "agents": "Agentes",
+    "agent": {
+      "working": "trabaja",
+      "prompt": "pregunta (llamada abierta)",
+      "waiting": "me espera",
+      "idle": "idle",
+      "kid": "Subagente"
+    },
+    "credits": "Modelos: KayKit (CC0) · Kenney Nature Kit (CC0) · Little Astronaut: jellevermandere (CC-BY) · Flying Robot: mshayan02 (CC-BY)",
+    "creditsTitle": "Licencias y fuentes: public/assets/kit/LICENSES.md"
+  },
+
+  "panel": {
+    "close": "Cerrar",
+    "open": "abrir",
+    "opening": "abriendo en VS Code …",
+    "error": "Error {status}",
+    "openInVscode": "Abrir en VS Code",
+    "openOwnTitle": "Abrir esta sesión como pestaña en VS Code",
+    "openParentTitle": "Abrir la sesión principal de este agente como pestaña en VS Code",
+    "row": {
+      "activity": "Actividad",
+      "sessions": "Sesiones",
+      "subagents": "Subagentes",
+      "git": "Git",
+      "branch": "Rama",
+      "commits7d": "Commits 7d",
+      "also": "También",
+      "subRepos": "Sub-repos",
+      "capped": "Sub-repos",
+      "parent": "Pertenece a"
+    },
+    "activity": "{state} · hace {days}d",
+    "sessionsValue": "{total} ({fresh} en 14d)",
+    "subagentsValue": "{n} en total",
+    "cappedValue": "{n} — demasiados para una familia, no colocados como casillas",
+    "expandFamily": "Desplegar familia",
+    "collapseFamily": "Plegar familia",
+    "jumpParent": "Ir al padre",
+    "note": "Nota: {title}",
+    "headElsewhere": "La sesión principal no está en esta casilla",
+    "noAgents": "sin agentes activos",
+    "minutes": "{n} min",
+    "agentOpen": "abierta",
+    "agentEnded": "terminada",
+    "reported": "informado",
+    "liveSubagents": {
+      "one": "{n} subagente en marcha",
+      "other": "{n} subagentes en marcha"
+    },
+    "pending": "llamada a herramienta sin respuesta: {tool}, desde hace {n} min",
+    "git": {
+      "dirty": "cambios sin commit",
+      "unpushed": "sin enviar",
+      "clean": "clean",
+      "norepo": "sin repositorio Git",
+      "missing": "falta el directorio"
+    },
+    "gitDirty": "({n} archivos)",
+    "gitAhead": "({n} commits)",
+    "gitNoUpstream": "(sin upstream)"
+  },
+
+  "hexState": {
+    "active": "activo",
+    "quiet": "tranquilo",
+    "stale": "stale"
+  },
+
+  "agent": {
+    "working": "trabaja",
+    "prompt": "pregunta",
+    "waiting": "espera",
+    "idle": "idle"
+  },
+
+  "daytip": {
+    "hint": "Commits en {title} ese día, fecha del committer. La altura de la barra se mide contra el día más fuerte de todos los proyectos ({max}).",
+    "unit": "Commits",
+    "last14": "últimos 14 días",
+    "last7": "últimos 7 días"
+  }
+}

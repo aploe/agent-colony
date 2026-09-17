@@ -1,0 +1,189 @@
+{
+  "meta": {
+    "name": "Deutsch",
+    "locale": "de-DE"
+  },
+
+  "hud": {
+    "reorder": "ordnen",
+    "reorderTitle": "Karte einmal nach Aufmerksamkeit neu ordnen",
+    "reorderIdle": "Nichts umzuordnen — die Karte liegt bereits nach Aufmerksamkeit",
+    "mode3dTitle": "Kolonie als 3D-Szene: links ziehen dreht, rechts ziehen schiebt, Rad zoomt",
+    "kitTitle": "Modelle statt Primitive: KayKit-Gelände, Kistenstapel, Figuren. Nur in 3D.",
+    "poll": "Poll {time}",
+    "pollTitle": "Datenstand der Erhebung: {time}",
+    "more": "{n} weitere",
+    "empty": "gerade niemand",
+    "session": "Session",
+    "counts": {
+      "projects": {
+        "label": "Projekte",
+        "title": "Projekte",
+        "hint": "Ein Feld ist ein Git-Repo-Root, nicht ein Vault-Projekt. Sub-Repos unterhalb eines Feldes zählen mit. Gezählt wird über alle Planeten — auf der Karte liegt immer nur einer.",
+        "rows": "Felder"
+      },
+      "satellites": {
+        "label": "Sub-Repos",
+        "title": "Sub-Repos",
+        "hint": "Eigene Git-Repos unterhalb eines Feldes, bis Tiefe 2 entdeckt. Sie zählen bei dirty und unpushed mit, auch wenn ihre Familie gerade zugeklappt ist — der Zähler beschreibt den Bestand, nicht die Sicht.",
+        "rows": "Sub-Repos"
+      },
+      "dirty": {
+        "label": "dirty",
+        "title": "dirty",
+        "hint": "Uncommittete Änderungen im Arbeitsverzeichnis, gezählt als Zeilen aus git status. Bei Repos mit Worktrees zählt nur das Hauptrepo — ein dirty Worktree bleibt hier unsichtbar.",
+        "rows": "Dateien",
+        "empty": "alles committet"
+      },
+      "unpushed": {
+        "label": "unpushed",
+        "title": "unpushed",
+        "hint": "Commits liegen lokal und nicht auf dem Remote. Ein Repo ganz ohne Upstream zählt ebenfalls mit, sobald es zuletzt Commits gab — wie viele dort fehlen, ist nicht messbar.",
+        "rows": "Commits voraus",
+        "empty": "alles gepusht"
+      },
+      "agents": {
+        "label": "Agenten",
+        "title": "Agenten",
+        "hint": "Jede erhobene Session: Hauptsession oder Subagent, dessen Transkript in den letzten 24 Stunden geschrieben wurde. Ältere fallen aus der Erhebung. Als Figur steht auf der Karte nur, wessen Fenster noch offen ist — alle übrigen listet das Panel des Feldes mit \"beendet\"."
+      },
+      "open": {
+        "label": "offen",
+        "title": "offene Fenster",
+        "hint": "Hauptsessions mit lebendem Prozess laut ~/.claude/sessions. Subagenten haben keinen eigenen Prozess und zählen nie mit. Sessions von der Windows-Seite fehlen hier."
+      },
+      "working": {
+        "label": "arbeiten",
+        "title": "arbeitet",
+        "hint": "Am Transkript wurde in den letzten 3 Minuten geschrieben. Ob dahinter ein Tool läuft oder der Agent nachdenkt, ist von außen nicht zu unterscheiden."
+      },
+      "prompt": {
+        "label": "fragen",
+        "title": "fragt",
+        "hint": "Ein Tool-Aufruf steht seit mindestens einer Minute offen, ohne Ergebnis — meist eine Permission-Abfrage, manchmal nur ein lang laufendes Tool."
+      },
+      "waiting": {
+        "label": "warten",
+        "title": "wartet auf mich",
+        "hint": "Mit installiertem Status-Hook: der Turn ist beendet, seitdem keine Reaktion. Ohne Hook: 3 bis 90 Minuten Stille seit der letzten Antwort. Subagenten zählen hier nie mit — ihnen antwortet ihr Parent, nicht ich."
+      },
+      "sessions": {
+        "label": "Sessions",
+        "title": "Sessions",
+        "hint": "Alle Transkripte in den Projektverzeichnissen, auch lange abgeschlossene. Anders als die Agenten ohne 24-Stunden-Fenster — die Zahl wächst, sie fällt nie."
+      },
+      "unassigned": {
+        "label": "im Hangar",
+        "title": "Hangar",
+        "hint": "Agenten, deren Arbeitsverzeichnis sich keinem Repo zuordnen ließ — etwa weil im Transkript nur noch Scratchpad-Pfade stehen."
+      }
+    }
+  },
+
+  "map": {
+    "station": "Hangar",
+    "strays": "{n} ohne Projekt",
+    "noTranscript": "kein Transkript",
+    "hexStatus": "{sessions}× · {days}d",
+    "chipTitle": "Familie auf- oder zuklappen"
+  },
+
+  "legend": {
+    "projects": "Projekte",
+    "fill": "Fläche:",
+    "ring": "Rand:",
+    "state": {
+      "active": "aktiv ≤7d",
+      "quiet": "ruhig ≤30d",
+      "stale": "stale >30d"
+    },
+    "git": {
+      "dirty": "dirty",
+      "unpushed": "unpushed",
+      "clean": "clean",
+      "norepo": "kein Repo",
+      "missing": "fehlt"
+    },
+    "agents": "Agenten",
+    "agent": {
+      "working": "arbeitet",
+      "prompt": "fragt (Tool-Aufruf offen)",
+      "waiting": "wartet auf mich",
+      "idle": "idle",
+      "kid": "Subagent"
+    },
+    "credits": "Modelle: KayKit (CC0) · Kenney Nature Kit (CC0) · Little Astronaut: jellevermandere (CC-BY) · Flying Robot: mshayan02 (CC-BY)",
+    "creditsTitle": "Lizenzen und Quellen: public/assets/kit/LICENSES.md"
+  },
+
+  "panel": {
+    "close": "Schließen",
+    "open": "öffnen",
+    "opening": "öffnet in VS Code …",
+    "error": "Fehler {status}",
+    "openInVscode": "In VS Code öffnen",
+    "openOwnTitle": "Diese Session als Tab in VS Code öffnen",
+    "openParentTitle": "Hauptsession dieses Agenten als Tab in VS Code öffnen",
+    "row": {
+      "activity": "Aktivität",
+      "sessions": "Sessions",
+      "subagents": "Subagenten",
+      "git": "Git",
+      "branch": "Branch",
+      "commits7d": "Commits 7d",
+      "also": "Auch",
+      "subRepos": "Sub-Repos",
+      "capped": "Unter-Repos",
+      "parent": "Gehört zu"
+    },
+    "activity": "{state} · vor {days}d",
+    "sessionsValue": "{total} ({fresh} in 14d)",
+    "subagentsValue": "{n} insgesamt",
+    "cappedValue": "{n} — zu viele für eine Familie, nicht als Waben angelegt",
+    "expandFamily": "Familie aufklappen",
+    "collapseFamily": "Familie zuklappen",
+    "jumpParent": "Zum Parent springen",
+    "note": "Notiz: {title}",
+    "headElsewhere": "Hauptsession nicht auf diesem Feld",
+    "noAgents": "keine aktiven Agenten",
+    "minutes": "{n} min",
+    "agentOpen": "offen",
+    "agentEnded": "beendet",
+    "reported": "gemeldet",
+    "liveSubagents": {
+      "one": "{n} Subagent läuft",
+      "other": "{n} Subagenten laufen"
+    },
+    "pending": "unbeantworteter Tool-Aufruf: {tool}, seit {n} min",
+    "git": {
+      "dirty": "uncommittete Änderungen",
+      "unpushed": "nicht gepusht",
+      "clean": "clean",
+      "norepo": "kein Git-Repo",
+      "missing": "Verzeichnis fehlt"
+    },
+    "gitDirty": "({n} Dateien)",
+    "gitAhead": "({n} Commits)",
+    "gitNoUpstream": "(kein Upstream)"
+  },
+
+  "hexState": {
+    "active": "aktiv",
+    "quiet": "ruhig",
+    "stale": "stale"
+  },
+
+  "agent": {
+    "working": "arbeitet",
+    "prompt": "fragt",
+    "waiting": "wartet",
+    "idle": "idle"
+  },
+
+  "daytip": {
+    "hint": "Commits in {title} an diesem Tag, Committer-Datum. Die Balkenhöhe misst sich am stärksten Tag aller Projekte ({max}).",
+    "unit": "Commits",
+    "last14": "letzte 14 Tage",
+    "last7": "letzte 7 Tage"
+  }
+}
