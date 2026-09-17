@@ -1,0 +1,3 @@
+#!/bin/sh
+# Staged paths, gitlinks and added lines (scripts/leak-check.mjs).
+exec sh "$(dirname "$0")/run.sh" --staged

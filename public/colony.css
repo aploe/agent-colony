@@ -1,0 +1,340 @@
+:root {
+  --bg: #0d1117;
+  --fg: #e6edf3;
+  --muted: #8b949e;
+  --line: #30363d;
+  --panel: #161b22;
+  --active: #2f7d4f;
+  --quiet: #3b5566;
+  --stale: #6b6234;
+  --dirty: #e5484d;
+  --unpushed: #f5a524;
+  --clean: #3fb950;
+  --missing: #8b3a3a;
+  --working: #3fb950;
+  --waiting: #f5d90a;
+  --prompt: #f0883e;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  overflow: hidden;
+}
+
+#hud {
+  position: fixed; inset: 0 0 auto 0; z-index: 3;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px;
+  padding: 6px 112px 6px 12px; /* rechts Platz fuer die absolut gesetzte Uhr (#clock) */
+  /* 45px war die einzeilige Hoehe, solange die Uhr als hoechstes Teil im
+   * Fluss stand; ohne sie waere die Zeile 42px und die Uhr saesse zu tief. */
+  min-height: 45px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  border-bottom: 1px solid var(--line);
+}
+/* Jedes Teil hier — Titel, Planetenknoepfe, Zaehlerblock, Knopf, Uhr —
+ * bleibt fuer sich einzeilig (white-space: nowrap, flex-shrink: 0); nur der
+ * Container bricht um, und zwar an Teilgrenzen. Ein Umbruch *innerhalb* der
+ * Zaehler sah nach Fehler aus (2026-09-11: Leiste 45px -> 64px, Zahlen und
+ * Beschriftung auf zwei Zeilen). Der Versuch, stattdessen gar nicht
+ * umzubrechen, lief bei knappen Fenstern rechts ueber und schnitt die Uhr ab.
+ * Die HUD-Hoehe ist also variabel; colony.js schreibt sie als --hud-h, das
+ * Panel haengt daran, und fitTarget misst sie ohnehin live. */
+#hud strong { letter-spacing: .02em; white-space: nowrap; flex-shrink: 0; }
+#planets { display: flex; gap: 6px; flex-shrink: 0; }
+/* Werkzeugknoepfe als Einheit: bei 1500 px passt das HUD nicht mehr in
+ * eine Zeile, und "3D" stand allein in Zeile 2 — das sah nach Fehler aus.
+ * Als Gruppe brechen beide zusammen um. */
+#tools { display: flex; gap: 6px; flex-shrink: 0; }
+#planets button, #reorder, #mode3d, #modekit {
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 3px 10px; cursor: pointer; font: inherit;
+  white-space: nowrap; flex-shrink: 0;
+}
+#planets button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+#reorder { color: var(--muted); }
+/* Nichts umzuordnen: gedimmt, aber weiter anklickbar. Das ist der Unterschied
+ * zwischen "es gibt nichts zu tun" und "der Knopf ist kaputt" — ohne dieses
+ * Zeichen sehen beide gleich aus (2026-09-15). */
+#reorder.leer { opacity: .45; }
+#reorder:hover, #mode3d:hover, #modekit:hover { color: var(--fg); border-color: var(--fg); }
+#reorder.leer:hover { opacity: 1; }
+/* Der Zaehlerblock ist das breiteste Teil (rund 1000px) und darf deshalb als
+ * einziges auch in sich umbrechen — an Gruppengrenzen, nie mitten in einem
+ * Zaehler (.grp bleibt nowrap). Dafuer muss er schrumpfen duerfen
+ * (flex-shrink 1, min-width 0): mit flex-shrink 0 bleibt ein Flex-Item so
+ * breit wie sein Inhalt, und das innere flex-wrap greift nie. */
+#counts { color: var(--muted); display: flex; flex-wrap: wrap; row-gap: 4px; flex-shrink: 1; min-width: 0; }
+#counts .grp { white-space: nowrap; }
+#counts .grp + .grp { margin-left: 10px; padding-left: 10px; border-left: 1px solid var(--line); }
+#counts b { color: var(--fg); font-weight: 600; }
+#counts .ok { color: var(--working); }
+#counts .warn { color: var(--waiting); }
+#counts .alert { color: var(--dirty); }
+/* Zweizeiliger Uhr-Block: die laufende Uhrzeit gross, darunter gedaempft der
+ * letzte Poll. Zeilenhoehe 1, damit der Header einzeilig so hoch bleibt wie
+ * vorher (45px).
+ *
+ * Absolut rechts oben, nicht im Flex-Fluss: als letztes Teil wanderte sie
+ * beim Umbruch als Erste in die zweite Zeile und stand dann rechts unten
+ * (2026-09-11). Der Platz dafuer ist das padding-right des HUD; 6px von
+ * oben entspricht der frueheren Zentrierung (32px Uhr in 44px Innenhoehe). */
+#clock {
+  position: absolute; top: 6px; right: 12px;
+  text-align: right;
+  font-variant-numeric: tabular-nums; line-height: 1;
+}
+#now { display: block; font-size: 17px; font-weight: 600; white-space: nowrap; }
+#stamp { display: block; margin-top: 4px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+#colony { display: block; width: 100vw; height: 100vh; cursor: grab; }
+#colony.dragging { cursor: grabbing; }
+/* Zwei Zeichenflaechen, immer genau eine sichtbar. `#colony { display: block }`
+ * schlaegt das UA-Stylesheet fuer [hidden] (Id gegen Attribut) — ohne diese
+ * Regel bliebe die 2D-Flaeche trotz hidden-Attribut sichtbar. */
+#colony[hidden], #colony3d[hidden], #overlay3d[hidden] { display: none; }
+#colony3d { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 1; cursor: grab; }
+#colony3d.dragging { cursor: grabbing; }
+/* Der CSS2DRenderer setzt selbst kein pointer-events (three 0.186, geprueft):
+ * ohne diese Regel fingen die Text-Overlays jeden Zeiger vor dem Canvas ab.
+ * Nur der Chip nimmt Klicks (.chip3d, Task 2). */
+#overlay3d { position: fixed; inset: 0; z-index: 2; pointer-events: none; overflow: hidden; }
+#mode3d[aria-pressed="true"], #modekit[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+#modekit[hidden] { display: none; } /* Sicherung gegen eine kuenftige display-Regel an den Knoepfen (id schlaegt Attribut) -- heute setzt keine davon display */
+
+#panel {
+  /* Unter dem HUD, das seit 2026-09-11 umbrechen darf und deshalb keine feste
+   * Hoehe mehr hat; 45px ist die einzeilige Hoehe als Rueckfall vor dem
+   * ersten Messwert. */
+  position: fixed; top: calc(var(--hud-h, 45px) + 7px); right: 12px; z-index: 4;
+  width: 340px; max-height: calc(100vh - 120px); overflow: auto;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 16px;
+}
+#close {
+  float: right; background: none; border: 0; color: var(--muted);
+  font-size: 22px; line-height: 1; cursor: pointer;
+}
+#panel h2 { margin: 0 28px 4px 0; font-size: 16px; }
+#panel dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 12px 0; }
+#panel dt { color: var(--muted); }
+#panel dd { margin: 0; }
+#panel a.open {
+  display: inline-block; margin-top: 8px; padding: 6px 12px;
+  background: #1f6feb; color: #fff; border-radius: 6px; text-decoration: none;
+}
+#panel ul { margin: 8px 0 0; padding-left: 0; list-style: none; }
+#panel li { padding: 6px 0; border-top: 1px solid var(--line); font-size: 13px; }
+#panel li code { color: var(--muted); font-size: 12px; word-break: break-all; }
+.tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); }
+.tag.working { color: var(--working); border-color: var(--working); }
+.tag.waiting { color: var(--waiting); border-color: var(--waiting); }
+.tag.prompt { color: var(--prompt); border-color: var(--prompt); }
+.tag.idle { color: var(--muted); }
+/* nowrap wie bei #planets button/#reorder: eine gerundete Pille darf nicht
+ * intern umbrechen, sonst macht der Browser aus einem dreiwortigen Inhalt
+ * ("N Subagenten laufen") zwei getrennte, voll gerundete Pillen. */
+#panel .tag.src { opacity: .65; font-style: italic; white-space: nowrap; }
+
+/* Die Agentenzeile ist Text; nur der kleine Knopf am Ende oeffnet die
+ * Session in VS Code. Das negative Aussenmass gleicht das Innenpolster aus,
+ * damit eine Markierung etwas breiter ist als der Text, ohne die Zeile zu
+ * verschieben. */
+#panel .agent {
+  display: block; margin: -3px -6px; padding: 3px 6px; border-radius: 5px;
+}
+/* Die Figur, die auf der Karte angeklickt wurde. Kein Signalton, nur ein
+ * Balken und etwas Grund: die Zustandsfarbe an der Pille traegt schon eine
+ * Bedeutung, eine zweite farbige Flaeche daneben wuerde sie verwaessern. */
+#panel .agent.marked {
+  background: color-mix(in srgb, var(--fg) 9%, transparent);
+  box-shadow: inset 2px 0 0 var(--fg);
+}
+#panel .open-session {
+  display: inline-block; margin-top: 3px; padding: 1px 8px;
+  font: inherit; font-size: 11px; color: var(--fg);
+  background: none; border: 1px solid var(--line); border-radius: 999px;
+  cursor: pointer;
+}
+#panel .open-session:hover { background: color-mix(in srgb, var(--fg) 10%, transparent); }
+#panel .open-session:focus-visible { outline: 1px solid var(--muted); }
+/* Wartetext gedaempft, Fehler in der Farbe, die im HUD schon "hier hakt
+ * etwas" heisst. Beides steht nur in der geklickten Zeile. */
+#panel .open-note { font-size: 12px; }
+#panel .open-note.wait { color: var(--muted); }
+#panel .open-note.bad { color: var(--prompt); }
+
+/* Zwei Gruppen, getrennt nach dem, was sie beschreiben: das Feld (Flaeche +
+ * Rand = Projekt) und die Figuren darauf (Agenten). Ein Trennstrich zwischen
+ * den Gruppen, die Untergruppen Flaeche/Rand bleiben als gedaempfte Labels. */
+#legend {
+  position: fixed; inset: auto 0 0 0; z-index: 3;
+  display: flex; flex-wrap: wrap; gap: 6px 0;
+  padding: 8px 14px; color: var(--muted); font-size: 12px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  border-top: 1px solid var(--line);
+}
+#legend .grp { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+#legend .grp + .grp { margin-left: 20px; padding-left: 20px; border-left: 1px solid var(--line); }
+#legend .grp b { color: var(--fg); font-weight: 600; margin-right: 2px; }
+#legend .grp.credits { margin-left: auto; color: var(--muted); font-size: 10px; border-left: 0; padding-left: 0; }
+#legend span { display: flex; align-items: center; gap: 5px; }
+#legend .sub { font-weight: 600; margin-left: 4px; }
+#legend .grp .sub:first-of-type { margin-left: 0; }
+#legend i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+.sw.active { background: var(--active); }
+.sw.quiet { background: var(--quiet); }
+.sw.stale { background: var(--stale); }
+.ring { border-radius: 50% !important; border: 2px solid; background: none; }
+.ring.dirty { border-color: var(--dirty); }
+.ring.unpushed { border-color: var(--unpushed); }
+.ring.clean { border-color: var(--clean); }
+.ring.norepo { border-color: var(--muted); border-style: dashed; }
+.ring.missing { border-color: var(--missing); }
+.dot { border-radius: 50% !important; }
+.dot.working { background: var(--working); }
+.dot.waiting { background: var(--waiting); }
+.dot.prompt { background: var(--prompt); }
+.dot.idle { background: var(--muted); }
+#panel a.open.alt { background: transparent; border: 1px solid var(--line); color: var(--fg); }
+#panel > div > code, #panel-body > code {
+  display: block; color: var(--muted); font-size: 11px; word-break: break-all; margin-top: 2px;
+}
+
+/* Subagenten haengen eingerueckt unter ihrer Hauptsession — die Linie ist
+ * dieselbe Aussage wie der Stiel auf der Karte. */
+/* #panel ul/li (0,1,0,1) schlaegt jede reine Klassenregel — die Einrueckung
+ * braucht denselben Id-Anker, sonst rendert die Verschachtelung flach. */
+#panel .kids { margin: 6px 0 0 4px; padding-left: 10px; border-left: 2px solid var(--line); }
+#panel .kids li { font-size: 12px; border-top: none; padding: 3px 0; }
+#panel .task { color: var(--muted); }
+#panel .pending { color: var(--prompt); }
+#legend .dot.kid { width: 7px; height: 7px; background: var(--muted); }
+
+/* Sub-Repo-Liste: Name und Zustand auf getrennten Zeilen. Ein Inline-Tag,
+ * das umbricht, zerreisst seinen Hintergrund; steht es allein auf seiner
+ * Zeile, kann das nicht passieren. #panel-Anker wegen der Spezifitaetsfalle. */
+#panel .subs { margin: 0; padding: 0; list-style: none; }
+#panel .subs li { border-top: none; padding: 2px 0 6px; }
+#panel .subs code { display: block; }
+#panel .subs .tag { display: inline-block; margin-top: 3px; }
+
+/* Familienpunkt in HUD-Card und Panel: Identitaet, nicht Zustand. */
+:is(#counts, #panel) .fam {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  margin-right: 6px; vertical-align: middle;
+}
+
+/* Hover-Cards auf den Agenten-Zaehlern.
+ *
+ * Shoelace liefert die Mechanik (Hover/Fokus, Delay, Flip am Viewport-Rand,
+ * Pfeil); das Aussehen kommt von hier, sonst saehe die Karte aus wie ein
+ * fremdes Widget auf dieser Flaeche. Der Inhalt haengt im `content`-Slot und
+ * bleibt damit im Light DOM *innerhalb* von #counts — deshalb brauchen alle
+ * Regeln darunter den #counts-Anker, sonst schlaegt `#counts b` (0,1,0,1)
+ * jede reine Klassenregel. Dieselbe Falle wie bei `#panel ul`. */
+#counts .cnt + .cnt::before { content: '·'; margin: 0 6px; }
+#counts .trg {
+  cursor: help; border-radius: 5px;
+  padding: 2px 4px; margin: 0 -4px;
+  transition: background-color .12s ease;
+}
+#counts sl-tooltip { --max-width: 300px; }
+#counts .trg:hover { background: #ffffff12; }
+
+#counts sl-tooltip::part(body) {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #1e252f;
+  /* Der Ring ersetzt eine Border: der Pfeil traegt keine, mit Border faellt
+   * das auf. Der Schatten allein traegt auf dunklem Grund zu wenig. */
+  box-shadow: 0 0 0 1px #ffffff14, 0 10px 28px #00000073;
+  font: inherit;
+  color: var(--fg);
+}
+#counts sl-tooltip::part(base__arrow) { background: #1e252f; }
+
+:is(#counts, #daytip) .tip-head {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 13px; font-weight: 600;
+}
+:is(#counts, #daytip) .tip-head i { width: 10px; height: 10px; flex: none; }
+:is(#counts, #daytip) .tip-head b {
+  margin-left: auto; font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+:is(#counts, #daytip) .tip p {
+  margin: 5px 0 10px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted); font-size: 11.5px; line-height: 1.5;
+  font-weight: 400;
+}
+:is(#counts, #daytip) .tip ul { margin: 0; padding: 0; list-style: none; }
+:is(#counts, #daytip) .tip li {
+  display: flex; align-items: baseline; gap: 14px;
+  padding: 3px 0; font-size: 12px;
+}
+:is(#counts, #daytip) .tip li span { color: var(--fg); font-weight: 400; }
+:is(#counts, #daytip) .tip li b {
+  margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 600;
+}
+:is(#counts, #daytip) .tip li.more span, :is(#counts, #daytip) .tip li.empty span { color: var(--muted); }
+/* Ueberschrift der rechten Spalte. Noetig, weil die Zahl je Karte etwas
+ * anderes zaehlt — Agenten, geaenderte Dateien, Commits voraus. */
+:is(#counts, #daytip) .tip li.unit {
+  padding: 0 0 4px; font-size: 10.5px; letter-spacing: .04em;
+  text-transform: uppercase;
+}
+:is(#counts, #daytip) .tip li.unit span { margin-left: auto; color: var(--muted); }
+:is(#counts, #daytip) .tip li.more { padding-top: 6px; }
+
+/* Hover-Card an den Tagesbalken der Skyline: dieselbe Karte wie im HUD
+ * (darum :is(#counts, #daytip) an den .tip-Regeln), aber ein sl-popup mit
+ * virtuellem Anker statt eines sl-tooltip. pointer-events: none, damit die
+ * Karte dem Canvas nie den Zeiger wegnimmt. */
+#daytip { --arrow-color: #1e252f; pointer-events: none; z-index: 6; }
+#daytip::part(popup) {
+  width: max-content; max-width: 300px;
+  padding: 12px 14px; border-radius: 10px;
+  background: #1e252f; color: var(--fg); font-size: 12px;
+  box-shadow: 0 0 0 1px #ffffff14, 0 10px 28px #00000073;
+}
+/* Positioniert ist der popup-Part im Schatten-DOM, nicht der Host: ein
+ * z-index auf #daytip bleibt wirkungslos, weil display:contents keine
+ * eigene Box erzeugt. In 2D fiel das nie auf, weil #colony weder position
+ * noch z-index hat und vor jedem positionierten Geschwister malt; #colony3d
+ * hat seit Task 2/3 explizit z-index 1 und malte seither ueber die Card. 6
+ * liegt damit ueber Canvas (1), Overlay (2), HUD/Legende (3) und auch ueber
+ * dem Panel (4) — gewollt: die Card folgt dem Zeiger, das Panel ist ein
+ * feststehendes Seitenelement, das sie bei Bedarf ueberdecken darf. */
+#daytip::part(popup) { z-index: 6; }
+
+/* Text-Overlays der 3D-Szene (CSS2DRenderer). Hier vereinbart (Task 2),
+ * benutzt von figures.mjs (.cnt3d) und labels.mjs (.lbl3d, .chip3d), damit
+ * die parallel gebauten Module keine gemeinsame Datei anfassen. Der
+ * CSS2DRenderer setzt je Element `position: absolute` und `transform`
+ * inline — ein transform in einer Hover-Regel wuerde ueberschrieben. */
+#overlay3d .lbl3d {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 3px 7px; border-radius: 4px;
+  background: rgba(13,17,23,.72); color: var(--fg);
+  font: 600 11px/1.2 ui-sans-serif, system-ui, sans-serif;
+  white-space: nowrap; text-align: center;
+}
+#overlay3d .lbl3d .s { font-weight: 400; font-size: 10px; color: rgba(230,237,243,.75); }
+#overlay3d .lbl3d.station .t { color: var(--muted); }
+/* Der Chip nimmt als einziges Overlay Klicks: pointer-events zurueck auf auto. */
+#overlay3d .chip3d {
+  pointer-events: auto; cursor: pointer;
+  width: 22px; height: 22px; padding: 0; border-radius: 50%;
+  border: 2px solid #8fd3ff; background: rgba(13,17,23,.85); color: #8fd3ff;
+  font: 600 11px/18px ui-sans-serif, system-ui, sans-serif; text-align: center;
+}
+#overlay3d .chip3d:hover { box-shadow: 0 0 0 3px rgba(143,211,255,.35); }
+#overlay3d .cnt3d { color: rgba(230,237,243,.9); font: 600 9px/1 ui-sans-serif, system-ui, sans-serif; white-space: nowrap; }
+#overlay3d .cnt3d.rest { color: rgba(230,237,243,.7); }

@@ -1,0 +1,3 @@
+#!/bin/sh
+# The commit message (scripts/leak-check.mjs).
+exec sh "$(dirname "$0")/run.sh" --message "$1"

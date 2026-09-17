@@ -1,0 +1,311 @@
+{
+  "version": 1,
+  "terrain": [
+    {
+      "file": "kaykit/basemodule_A.gltf",
+      "footprint": 34
+    },
+    {
+      "file": "kaykit/basemodule_B.gltf",
+      "footprint": 34
+    },
+    {
+      "file": "kaykit/basemodule_D.gltf",
+      "footprint": 32
+    },
+    {
+      "file": "kaykit/basemodule_E.gltf",
+      "footprint": 32
+    },
+    {
+      "file": "kaykit/basemodule_garage.gltf",
+      "footprint": 36
+    },
+    {
+      "file": "kaykit/cargodepot_A.gltf",
+      "footprint": 34
+    },
+    {
+      "file": "kaykit/cargodepot_B.gltf",
+      "footprint": 32
+    },
+    {
+      "file": "kaykit/cargodepot_C.gltf",
+      "footprint": 30
+    },
+    {
+      "file": "kaykit/drill_structure.gltf",
+      "height": 38
+    },
+    {
+      "file": "kaykit/landingpad_large.gltf",
+      "footprint": 40
+    },
+    {
+      "file": "kaykit/structure_low.gltf",
+      "footprint": 30
+    },
+    {
+      "file": "kaykit/structure_tall.gltf",
+      "height": 42
+    },
+    {
+      "file": "kaykit/containers_A.gltf",
+      "footprint": 26
+    },
+    {
+      "file": "kaykit/containers_C.gltf",
+      "footprint": 24
+    },
+    {
+      "file": "kaykit/containers_B.gltf",
+      "footprint": 26
+    },
+    {
+      "file": "kaykit/containers_D.gltf",
+      "footprint": 24
+    },
+    {
+      "file": "kaykit/solarpanel.gltf",
+      "footprint": 26
+    },
+    {
+      "file": "kaykit/windturbine_low.gltf",
+      "height": 34
+    }
+  ],
+  "dayCrate": {
+    "file": "kaykit/basemodule_C.gltf",
+    "footprint": "DAY_W"
+  },
+  "bridge": {
+    "file": "kaykit/tunnel_straight_A.gltf",
+    "across": "BRIDGE_W"
+  },
+  "station": [
+    {
+      "file": "kaykit/lander_base.gltf",
+      "footprint": 42
+    },
+    {
+      "file": "kaykit/lander_A.gltf",
+      "footprint": 28
+    }
+  ],
+  "groundTerrain": [
+    {
+      "file": "kaykit/rock_A.gltf",
+      "footprint": 12,
+      "kind": "rock"
+    },
+    {
+      "file": "kaykit/rock_B.gltf",
+      "footprint": 14,
+      "kind": "rock"
+    },
+    {
+      "file": "kaykit/rocks_A.gltf",
+      "footprint": 18,
+      "kind": "rock"
+    },
+    {
+      "file": "kaykit/rocks_B.gltf",
+      "footprint": 22,
+      "kind": "rock"
+    },
+    {
+      "file": "kenney/grass.glb",
+      "footprint": 9,
+      "kind": "grass",
+      "paint": {
+        "grass": "grass"
+      }
+    },
+    {
+      "file": "kenney/grass_large.glb",
+      "footprint": 10,
+      "kind": "grass",
+      "paint": {
+        "grass": "grass"
+      }
+    },
+    {
+      "file": "kenney/grass_leafs.glb",
+      "footprint": 7,
+      "kind": "grass",
+      "paint": {
+        "grass": "grass"
+      }
+    },
+    {
+      "file": "kenney/plant_bush.glb",
+      "footprint": 11,
+      "kind": "bush",
+      "paint": {
+        "grass": "leaf"
+      }
+    },
+    {
+      "file": "kenney/plant_bushSmall.glb",
+      "footprint": 9,
+      "kind": "bush",
+      "paint": {
+        "grass": "leaf"
+      }
+    },
+    {
+      "file": "kenney/tree_default.glb",
+      "height": 30,
+      "kind": "tree",
+      "paint": {
+        "leafsGreen": "leaf",
+        "woodBark": "wood"
+      }
+    },
+    {
+      "file": "kenney/tree_small.glb",
+      "height": 20,
+      "kind": "tree",
+      "paint": {
+        "leafsGreen": "leaf",
+        "woodBark": "wood"
+      }
+    },
+    {
+      "file": "kenney/tree_simple.glb",
+      "height": 26,
+      "kind": "tree",
+      "paint": {
+        "leafsGreen": "leaf",
+        "woodBark": "wood"
+      }
+    },
+    {
+      "file": "kenney/tree_palm.glb",
+      "height": 34,
+      "kind": "palm",
+      "paint": {
+        "leafsGreen": "leaf",
+        "woodBark": "wood"
+      }
+    },
+    {
+      "file": "kenney/tree_palmBend.glb",
+      "height": 30,
+      "kind": "palm",
+      "paint": {
+        "leafsGreen": "leaf",
+        "woodBark": "wood"
+      }
+    },
+    {
+      "file": "kenney/tree_palmShort.glb",
+      "height": 22,
+      "kind": "palm",
+      "paint": {
+        "leafsGreen": "leaf",
+        "woodBark": "wood"
+      }
+    },
+    {
+      "file": "kaykit/rocks_B.gltf",
+      "footprint": 42,
+      "kind": "boulder",
+      "paint": {
+        "spacebits_texture": "stone"
+      }
+    },
+    {
+      "file": "kaykit/rock_B.gltf",
+      "footprint": 34,
+      "kind": "boulder",
+      "paint": {
+        "spacebits_texture": "stone"
+      }
+    },
+    {
+      "file": "kaykit/rock_A.gltf",
+      "footprint": 10,
+      "kind": "pebble",
+      "paint": {
+        "spacebits_texture": "pebble"
+      }
+    },
+    {
+      "file": "kaykit/rocks_A.gltf",
+      "footprint": 13,
+      "kind": "pebble",
+      "paint": {
+        "spacebits_texture": "pebble"
+      }
+    },
+    {
+      "file": "kaykit/rocks_B.gltf",
+      "footprint": 46,
+      "kind": "ice",
+      "paint": {
+        "spacebits_texture": "ice"
+      }
+    },
+    {
+      "file": "kaykit/rocks_A.gltf",
+      "footprint": 28,
+      "kind": "ice",
+      "paint": {
+        "spacebits_texture": "ice"
+      }
+    },
+    {
+      "file": "kaykit/rock_B.gltf",
+      "footprint": 20,
+      "kind": "ice",
+      "paint": {
+        "spacebits_texture": "ice"
+      }
+    },
+    {
+      "file": "kenney/grass_large.glb",
+      "footprint": 12,
+      "kind": "drygrass",
+      "paint": {
+        "grass": "straw"
+      }
+    },
+    {
+      "file": "kenney/grass_leafs.glb",
+      "footprint": 9,
+      "kind": "drygrass",
+      "paint": {
+        "grass": "straw"
+      }
+    },
+    {
+      "file": "kenney/plant_bush.glb",
+      "footprint": 14,
+      "kind": "dryshrub",
+      "paint": {
+        "grass": "scrub"
+      }
+    },
+    {
+      "file": "kenney/plant_bushSmall.glb",
+      "footprint": 10,
+      "kind": "dryshrub",
+      "paint": {
+        "grass": "scrub"
+      }
+    }
+  ],
+  "figure": {
+    "main": {
+      "file": "sketchfab/little-astronaut.glb",
+      "height": 12,
+      "hover": 0
+    },
+    "sub": {
+      "file": "sketchfab/flying-robot.glb",
+      "height": 8,
+      "hover": 3
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "port": 4173,
+  "pollSeconds": 5,
+  "gitCacheSeconds": 20,
+  "shadows": false,
+  "maxFps": 30,
+  "maxPixelRatio3d": 1.5,
+  "subRepos": { "depth": 2, "maxSatellites": 12, "skipDirs": ["node_modules", "vendor"] },
+  "reorder": { "ringDelta": 2, "cooldownSeconds": 60, "animateMs": 400 },
+
+  "thresholds": {
+    "activeDays": 7,
+    "quietDays": 30,
+    "freshSessionDays": 14,
+    "agentWorkingMinutes": 3,
+    "agentPromptMinutes": 1,
+    "agentWaitingMinutes": 90,
+    "agentDropHours": 24
+  },
+
+  "planets": [
+    { "id": "kolonie", "label": "Kolonie", "theme": "earth", "ground": "gruen", "prefixes": [] }
+  ],
+
+  "ignoreDirs": ["-", "-mnt-c-Windows-System32"],
+  "ignorePaths": [],
+  "ignoreCwdPrefixes": ["/mnt/c/Windows", "/tmp/claude-"]
+}

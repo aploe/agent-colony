@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="de" class="sl-theme-dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Colony</title>
+<link rel="stylesheet" href="/vendor/@shoelace-style/shoelace/dist/themes/dark.css">
+<link rel="stylesheet" href="/colony.css">
+</head>
+<body>
+<header id="hud">
+  <strong>Agent Colony</strong>
+  <nav id="planets"></nav>
+  <span id="counts"></span>
+  <span id="tools">
+    <button id="reorder" title="Karte einmal nach Aufmerksamkeit neu ordnen">ordnen</button>
+    <button id="mode3d" aria-pressed="false" title="Kolonie als 3D-Szene: links ziehen dreht, rechts ziehen schiebt, Rad zoomt">3D</button>
+    <button id="modekit" aria-pressed="false" hidden title="Modelle statt Primitive: KayKit-Gelaende, Kistenstapel, Figuren. Nur in 3D.">Kit</button>
+  </span>
+  <div id="clock">
+    <time id="now"></time>
+    <span id="stamp"></span>
+  </div>
+</header>
+
+<canvas id="colony"></canvas>
+<canvas id="colony3d" hidden></canvas>
+<div id="overlay3d" hidden></div>
+
+<aside id="panel" hidden>
+  <button id="close" aria-label="Schliessen">&times;</button>
+  <div id="panel-body"></div>
+</aside>
+
+<footer id="legend">
+  <div class="grp">
+    <b>Projekte</b>
+    <span class="sub">Fläche:</span>
+    <span><i class="sw active"></i>aktiv &le;7d</span>
+    <span><i class="sw quiet"></i>ruhig &le;30d</span>
+    <span><i class="sw stale"></i>stale &gt;30d</span>
+    <span class="sub">Rand:</span>
+    <span><i class="ring dirty"></i>dirty</span>
+    <span><i class="ring unpushed"></i>unpushed</span>
+    <span><i class="ring clean"></i>clean</span>
+    <span><i class="ring norepo"></i>kein Repo</span>
+    <span><i class="ring missing"></i>fehlt</span>
+  </div>
+  <div class="grp">
+    <b>Agenten</b>
+    <span><i class="dot working"></i>arbeitet</span>
+    <span><i class="dot prompt"></i>fragt (Tool-Aufruf offen)</span>
+    <span><i class="dot waiting"></i>wartet auf mich</span>
+    <span><i class="dot idle"></i>idle</span>
+    <span><i class="dot kid"></i>Subagent</span>
+  </div>
+  <div class="grp credits">
+    <span title="Lizenzen und Quellen: public/assets/kit/LICENSES.md">Modelle: KayKit (CC0) · Kenney Nature Kit (CC0) · Little Astronaut: jellevermandere (CC-BY) · Flying Robot: mshayan02 (CC-BY)</span>
+  </div>
+</footer>
+
+<!-- three.js liegt in node_modules und wird vom Server unter /vendor/three/
+     ausgeliefert. Die Importmap macht den blanken Namen "three" aufloesbar,
+     wie ihn die Addons (OrbitControls, CSS2DRenderer) importieren - ohne
+     Bundler geht das sonst nicht. Importiert wird three nur vom 3D-Renderer
+     (public/colony/r3d/), und der wird erst geladen, wenn man ihn einschaltet. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "/vendor/three/build/three.module.js",
+    "three/addons/": "/vendor/three/examples/jsm/",
+
+    "@shoelace-style/shoelace/dist/": "/vendor/@shoelace-style/shoelace/dist/",
+    "@shoelace-style/localize": "/vendor/@shoelace-style/localize/dist/index.js",
+    "composed-offset-position": "/vendor/composed-offset-position/dist/composed-offset-position.esm.js",
+
+    "lit": "/vendor/lit/index.js",
+    "lit/": "/vendor/lit/",
+    "lit-html": "/vendor/lit-html/lit-html.js",
+    "lit-html/": "/vendor/lit-html/",
+    "lit-element/": "/vendor/lit-element/",
+    "@lit/reactive-element": "/vendor/@lit/reactive-element/reactive-element.js",
+    "@lit/reactive-element/": "/vendor/@lit/reactive-element/",
+
+    "@floating-ui/dom": "/vendor/@floating-ui/dom/dist/floating-ui.dom.esm.js",
+    "@floating-ui/core": "/vendor/@floating-ui/core/dist/floating-ui.core.esm.js",
+    "@floating-ui/utils": "/vendor/@floating-ui/utils/dist/floating-ui.utils.esm.js",
+    "@floating-ui/utils/dom": "/vendor/@floating-ui/utils/dist/floating-ui.utils.dom.esm.js"
+  }
+}
+</script>
+
+<script type="module" src="/colony.js"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+# Dependencies (a worktree links node_modules, hence both forms)
+node_modules/
+node_modules
+*.log
+
+# Per-machine settings: only overrides of config/colony.config.json
+/config/colony.local.json
+
+# Throwaway work
+.worktrees/
+scratchpad/
+
+# Maintainer workspace: a separate private repository that sits inside this
+# checkout. Nothing in or from it belongs in this repository; the leak check
+# in scripts/git-hooks enforces that. No trailing slash: in a worktree,
+# workshop is a symlink, and a slash pattern only matches directories.
+/workshop
+
+# Links into workshop/, created by workshop/setup.sh
+/CLAUDE.md
+/CLAUDE.local.md
+/.claude/
+/.handoffs
+/fundus/
+/.superpowers/

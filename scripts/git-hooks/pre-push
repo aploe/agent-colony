@@ -1,0 +1,4 @@
+#!/bin/sh
+# Every commit about to be pushed; git passes the refs on stdin
+# (scripts/leak-check.mjs). $1 is the remote name.
+exec sh "$(dirname "$0")/run.sh" --push "$1"
