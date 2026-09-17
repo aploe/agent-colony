@@ -50,7 +50,10 @@ async function refresh() {
   // Nach dem verankerten Layout pruefen, ob die Ordnung noch stimmt.
   app.maybeReorder();
   const first = app.planetId === null;
-  const fromHash = location.hash.slice(1);
+  // Alles vor einem `?` ist der Planet: `#privat?lang=fr` nennt `privat`.
+  // Ohne das Abschneiden faellt der unbekannte Name still auf den ersten
+  // Planeten zurueck (workshop/docs/PITFALLS.md, "Werkzeuge").
+  const fromHash = location.hash.slice(1).split('?')[0];
   app.planetId ??= app.state.planets.some((p) => p.id === fromHash)
     ? fromHash
     : app.state.planets[0]?.id;

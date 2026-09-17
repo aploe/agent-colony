@@ -57,6 +57,17 @@ function candidates(lang) {
   return short === l ? [l] : [l, short];
 }
 
+/* Die Sprache aus der URL, in beiden Formen: `?lang=fr#kolonie` und
+ * `#kolonie?lang=fr`. Die Karte wird als `/#planet` gemerkt und verlinkt,
+ * wer den Parameter dahinter haengt, meint dasselbe — und bekam vorher
+ * still die Config-Sprache zurueck. */
+function langFromUrl() {
+  const fromSearch = new URLSearchParams(location.search).get('lang');
+  if (fromSearch) return fromSearch;
+  const q = location.hash.indexOf('?');
+  return q === -1 ? null : new URLSearchParams(location.hash.slice(q + 1)).get('lang');
+}
+
 /** Platzhalter `{name}` aus `params` fuellen. Fehlt einer, bleibt er stehen. */
 function fill(text, params) {
   if (!params) return text;
@@ -119,7 +130,7 @@ function applyStatic(root = document) {
 /* Einmal beim Laden, bevor irgendetwas zeichnet. `configured` ist
  * `state.config.language`; die URL schlaegt sie. */
 async function initI18n(configured) {
-  const wanted = new URLSearchParams(location.search).get('lang') ?? configured;
+  const wanted = langFromUrl() ?? configured;
   dict = (await fetchDict(FALLBACK)) ?? {};
   tag = dict.meta?.locale ?? 'en-GB';
   code = FALLBACK;
