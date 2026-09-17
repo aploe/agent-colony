@@ -464,3 +464,12 @@ Liste. Nicht übernommen wurde die Engine: keine Isometrie, kein
 Planetenflug. Die 3D-Ansicht kam später dazu, zuerst aus Primitivgeometrie,
 dann mit dem Modell-Kit; laufende Figuren und Gesichter, anfangs bewusst
 weggelassen, folgten mit dem Kit.
+
+## Lizenz
+
+[PolyForm Internal Use License 1.0.0](LICENSE). Du darfst Agent Colony
+nutzen und für dich anpassen, auch in deiner Firma für die interne Arbeit.
+Weitergeben darfst du es nicht, weder unverändert noch verändert, und damit
+auch nicht verkaufen. Das ist bewusst keine Open-Source-Lizenz. Die Modelle
+und Bilder unter `public/assets/` haben eigene Lizenzen, aufgeführt in den
+`LICENSES.md` daneben.
