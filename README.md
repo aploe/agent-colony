@@ -335,6 +335,7 @@ falling back to the defaults.
 | `port` | Server port, default 4173. `--port N` or `COLONY_PORT` override it, `--port 0` picks a free one and names it in the startup line |
 | `host` | Address the server binds to, default `127.0.0.1`: only your own machine reaches the map, under WSL also the Windows browser via `localhost`. Another address such as `0.0.0.0` makes `/api/state` with all paths, branches and tasks readable for anyone who reaches it; the server then warns at startup |
 | `pollSeconds` | Browser poll interval, default 5 |
+| `language` | Interface language, default `en`. The code names a file under `public/i18n/` (`en`, `de`, `es`, `fr`); `de-DE` also finds `de.json`. See "Interface language" |
 | `gitCacheSeconds` | How long Git results stay valid, default 20 |
 | `planets` | Groups with `id`, `label`, `theme` (`earth` or `mars`), path `prefixes` and `ground` (ground palette of the 3D kit skin: `rost`, `gruen`, `blau` or `gelb`; without the key, `theme === 'mars' ? 'rost' : 'gruen'` applies); the last planet catches the rest. Default: one planet `kolonie` for everything |
 | `thresholds` | `activeDays` 7, `quietDays` 30, `freshSessionDays` 14, `agentWorkingMinutes` 3, `agentPromptMinutes` 1, `agentWaitingMinutes` 90, `agentDropHours` 24 |
@@ -347,6 +348,27 @@ falling back to the defaults.
 | `vscodeCli` | Path to the `code` CLI, in case the search under `~/.vscode-server/bin/*/bin/remote-cli/code` fails. Usually empty |
 | `vaultPath`, `vaultName`, `projectsDir`, `noteMapping` | Obsidian vault and notes folder for the optional note link; `noteMapping` maps repo paths to note titles, otherwise the name is used |
 | `hookStatusDir` | Location of the hook status files, for the reader only. Default `${XDG_RUNTIME_DIR:-/tmp}/agent-colony` |
+
+### Interface language
+
+Every label comes from a language table under `public/i18n/`: `en.json` (the
+default), `de.json`, `es.json`, `fr.json`. The key `language` picks one.
+`?lang=fr` in the URL overrides it for a look at another language without
+editing the config, in both forms — `?lang=fr#planet` and `#planet?lang=fr`.
+
+A new language is one more file beside those four, named after its code: copy
+`en.json`, translate the values, set `language` to the code. Values carry
+`{name}` placeholders (`"({n} files)"`), and where a count decides the wording
+an object with `one` and `other`. `meta.locale` is the BCP-47 tag that clocks
+and dates are formatted with.
+
+`en.json` is always loaded first and the chosen language laid over it, so an
+incomplete translation shows English gaps instead of empty spots, and a key
+that exists in no file is drawn as the key itself. Two limits worth knowing:
+a label inside a hex is clamped to the width of that hex, so a long
+translation is cut off with an ellipsis there, and the thresholds quoted in
+the hover cards (7 days, 3 minutes …) are part of the translated sentences —
+whoever changes `thresholds` has to follow up in every language file.
 
 ## How it works
 
