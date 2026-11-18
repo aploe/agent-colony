@@ -154,6 +154,23 @@ test('E3: a session missing longer than the grace ends the request; one torn rea
   assert.equal(s.logs[0].ending, 'E3');
 });
 
+test('a torn registry read (row listed, not open, no status) counts as missing, not as E4', () => {
+  const s = store(100);
+  s.hold();
+  s.tick(150); // past the grace: an E4 would end it at once
+  const torn = row({ open: false, registryStatus: null, state: 'idle' });
+  s.r.reconcile(new Map([[S1, torn]]));
+  assert.equal(s.r.size, 1, 'one torn read must not end the request');
+  s.r.reconcile(new Map([[S1, row()]])); // the next read is whole again
+  s.tick(80);
+  s.r.reconcile(new Map([[S1, row({ open: null, registryStatus: null })]]));
+  assert.equal(s.r.size, 1);
+  s.tick(120);
+  s.r.reconcile(new Map([[S1, torn]]));
+  assert.equal(s.r.size, 0, 'an absence longer than the grace ends it');
+  assert.equal(s.logs[0].ending, 'E3');
+});
+
 test('E4: no dialog open after the grace ends the request; registry beats state; no registry falls back to state', () => {
   const s = store(100);
   s.hold();

@@ -62,7 +62,9 @@ function heldIds() {
  * Anfrage geht durch escapeHtml; die Knoepfe tragen nur Index und Aktion, nie
  * Antworttext. */
 function requestBlock(a, r) {
-  const busy = ans.sending.has(r.id);
+  // Aus, solange die Antwort unterwegs ist, und solange der letzte Poll
+  // scheiterte: ob der Server die Anfrage dann noch haelt, weiss niemand.
+  const busy = ans.sending.has(r.id) || app.offline;
   const off = busy ? ' disabled' : '';
   const origin = r.via === 'subagent'
     ? '<div class="req-origin">' + escapeHtml(t('answer.fromSubagent')) + '</div>'

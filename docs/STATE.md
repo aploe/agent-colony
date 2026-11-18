@@ -57,7 +57,9 @@ die Kommentare an `agents[].state` sind die Entscheidungslogik von
                                                 // war als Kriterium falsch, siehe Fallen unten)
         statusSource: 'registry' | 'hook' | 'transcript',  // registry = Status der Prozess-Registry (erste Quelle,
                                                 // nur Hauptsessions mit lebendem Prozess: busy/shell -> working,
-                                                // idle -> waiting (idle ab agentWaitingMinutes), waiting -> prompt);
+                                                // idle -> waiting ohne Zeitgrenze, idle nur wenn der Hook idle
+                                                // meldet (ohne Hook: letzter Record nicht vom Assistenten),
+                                                // waiting -> prompt);
                                                 // hook = von der Session selbst gemeldet, sonst geraten
         registryStatus: 'busy' | 'idle' | 'waiting' | 'shell' | ... | null,  // Rohwert der Registry, nur Hauptsessions
         entrypoint: <string> | null,            // Registry-Feld (z. B. cli), nur Hauptsessions mit lebendem Prozess

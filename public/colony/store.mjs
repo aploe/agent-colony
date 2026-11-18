@@ -62,6 +62,7 @@ const app = {
   dayHover: null, // { hexId, day }: Tagesbalken unter dem Cursor
   dayMax: 1, // staerkster Tag ueber alle Projekte, Bezug der Balkenhoehe
   lastPollMs: null, // Zeitpunkt des letzten geglueckten Fetch
+  offline: false, // letzter Poll gescheitert: was zu sehen ist, ist der alte Stand
   collapsed: new Set(), // Container-IDs, deren Kinder eingeklappt sind
   anchors: new Map(), // Planet -> (Wurzel-ID -> Zelle): gemerkte Plaetze
   lastReorderMs: 0, // Sperrfrist der automatischen Umordnung

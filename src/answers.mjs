@@ -262,11 +262,14 @@ export function createRequests({ now = Date.now, newId = randomUUID, graceMs = G
       let ended = 0;
       for (const r of [...held.values()]) {
         const row = rows.get(r.sessionId);
-        if (!row) {
+        if (!row || row.open !== true) {
           // One state without the session can be a torn read of its registry file, or a
-          // registry that could not be read at all. Only an absence that lasts longer than the
-          // grace counts as gone. It is not ridden out for longer either: a run without a
-          // dialog must not wait on a server that cannot see whether it still asks.
+          // registry that could not be read at all. Colony still lists such a session, from
+          // its transcript, but as not open (`open: false` or `null`) and without a registry
+          // status, so it counts as missing here, not as "no dialog open" (E4). Only an
+          // absence that lasts longer than the grace counts as gone. It is not ridden out for
+          // longer either: a run without a dialog must not wait on a server that cannot see
+          // whether it still asks.
           r.missingSince ??= now();
           if (now() - r.missingSince > graceMs) ended += end(r.id, 'E3');
           continue;
@@ -305,8 +308,9 @@ export function createRequests({ now = Date.now, newId = randomUUID, graceMs = G
 
 const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 const isJson = (headers) => (headers['content-type'] ?? '').split(';')[0].trim().toLowerCase() === 'application/json';
-/** DNS-rebinding guard: the Host must be our own loopback origin. */
-const hostOk = (req) => {
+/** DNS-rebinding guard: the Host must be our own loopback origin. Also used by server.mjs for
+ *  /api/state, which carries the held commands in full. */
+export const hostOk = (req) => {
   const host = req.headers.host;
   const port = req.socket.localPort;
   return host === `127.0.0.1:${port}` || host === `localhost:${port}`;
@@ -354,7 +358,8 @@ export function createAnswering({
       } catch (err) {
         log(`held requests: collect failed: ${err?.message ?? err}`); // retried next tick
       }
-      invalidate();
+      // No invalidate here: the server attaches the held requests on every read, also from
+      // its cache, and the fresh collect just taken is the best cache there is.
       watchRequests();
     }, pollMs);
   }

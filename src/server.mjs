@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, extname, join, normalize } from 'node:path';
 import { collect, loadConfig } from './collect.mjs';
 import { openSession, UUID } from './vscode.mjs';
-import { createAnswering, sessionRows } from './answers.mjs';
+import { createAnswering, hostOk, sessionRows } from './answers.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const cfg = await loadConfig();
@@ -78,18 +78,29 @@ const MOUNTS = [
 const CACHE_MS = ((cfg.pollSeconds ?? 3) * 1000) / 2;
 let cache = { at: 0, state: null };
 let generation = 0;
+const bindsLoopback = ['127.0.0.1', '::1', 'localhost'].includes(cfg.host ?? '127.0.0.1');
 // A store change (a request held or answered) drops the cache, and a collect that was
 // already running must not put its older result back.
 function invalidate() {
   generation++;
   cache = { at: 0, state: null };
 }
+// A collect that is already running is shared: several hook calls arriving together (parallel
+// tool calls, several tabs) wait for one collect instead of starting one each.
+let inflight = null;
 async function state({ fresh = false } = {}) {
   if (!fresh && Date.now() - cache.at < CACHE_MS && cache.state) return withRequests(cache.state);
+  if (!fresh && inflight) return withRequests(await inflight);
   const gen = generation;
-  const collected = await collect(cfg);
-  if (gen === generation) cache = { at: Date.now(), state: collected };
-  return withRequests(collected);
+  const run = collect(cfg);
+  inflight = run;
+  try {
+    const collected = await run;
+    if (gen === generation) cache = { at: Date.now(), state: collected };
+    return withRequests(collected);
+  } finally {
+    if (inflight === run) inflight = null;
+  }
 }
 // Held permission requests ride on their main agent's row. They never change `state` or the
 // counts: the held request is a fact about the dialog, not about the session's activity.
@@ -177,6 +188,15 @@ function paths(st) {
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
+    // DNS rebinding: a foreign page whose name resolves to 127.0.0.1 is same-origin to itself
+    // and could read /api/state, which now carries held commands in full. A request for our
+    // API must name us as its Host. Only while the server binds to loopback; whoever sets
+    // `host` to a network address chose to be reachable under other names (and is warned).
+    if ((url.pathname === '/api/state' || url.pathname === '/api/open-session') && bindsLoopback && !hostOk(req)) {
+      res.writeHead(403, { 'content-type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: false, error: 'fremder Host' }));
+      return;
+    }
     if (url.pathname === '/api/state') {
       res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify(await state()));

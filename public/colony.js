@@ -29,8 +29,10 @@ const hudSettled = () =>
 
 async function refresh() {
   const res = await fetch('/api/state');
+  if (!res.ok) throw new Error('state ' + res.status);
   app.state = await res.json();
   app.lastPollMs = Date.now();
+  app.offline = false;
   // Die Sprache steht in der Config des Servers, also erst hier. Vor dem
   // ersten renderHud() geladen, damit kein Zaehler mit einem Schluessel
   // statt einer Beschriftung gebaut wird — die Zellen entstehen nur einmal.
@@ -370,4 +372,13 @@ clock();
 /* Intervall aus der Config des Servers statt einer Konstante hier. Der erste
  * Refresh ist an dieser Stelle durch, der Wert steht also fest. Eine
  * Config-Aenderung wirkt erst nach einem Reload — das reicht. */
-setInterval(refresh, (app.state?.config?.pollSeconds ?? 3) * 1000);
+setInterval(() => {
+  refresh().catch(() => {
+    // Server weg oder neu gestartet: die Karte bleibt beim letzten Stand,
+    // aber gehaltene Anfragen darauf sind womoeglich laengst beendet. Die
+    // Antwortknoepfe im Panel gehen aus, bis ein Poll wieder durchkommt.
+    if (app.offline) return;
+    app.offline = true;
+    if (app.selected) renderPanel(app.selected);
+  });
+}, (app.state?.config?.pollSeconds ?? 3) * 1000);
