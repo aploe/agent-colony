@@ -116,7 +116,7 @@ export async function collect(cfg) {
       open: agents.filter((a) => a.open === true && !a.sub).length,
       // Figuren, deren Zustand vom Hook kommt statt aus dem Transkript.
       // Faellt die Zahl unerwartet auf 0, ist der Hook nicht mehr registriert.
-      hookStatus: agents.filter((a) => a.statusSource === 'hook').length,
+      hookStatus: agents.filter((a) => a.statusSource === 'hook' || a.statusSource === 'registry').length,
       prompt: agents.filter((a) => a.state === 'prompt').length,
       working: agents.filter((a) => a.state === 'working').length,
       waiting: agents.filter((a) => a.state === 'waiting').length,

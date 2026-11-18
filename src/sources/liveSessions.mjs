@@ -89,6 +89,13 @@ export async function loadLiveSessions(cfg) {
           cwd: rec.cwd ?? null,
           startedAt: started && !Number.isNaN(started.getTime()) ? started.toISOString() : null,
           kind: rec.kind ?? null,
+          // What the registry itself reports (busy/idle/waiting/shell, ...).
+          status: typeof rec.status === 'string' ? rec.status : null,
+          statusUpdatedAtMs: Number.isFinite(rec.statusUpdatedAt) ? rec.statusUpdatedAt : null,
+          waitingFor: rec.waitingFor ?? null,
+          entrypoint: rec.entrypoint ?? null,
+          name: rec.name ?? null,
+          nameSource: rec.nameSource ?? null,
         });
       }),
   );

@@ -320,3 +320,49 @@ test('parseMs: null und undefined liefern null, kein Wurf', () => {
   assert.equal(parseMs(null), null);
   assert.equal(parseMs(undefined), null);
 });
+
+// Registry status first (made-up data).
+const NOW = Date.UTC(2026, 0, 1, 12, 0, 0);
+const reg = (over = {}) => decide({ nowMs: NOW, registrySinceMs: NOW - 60000, ...over });
+
+test('registry busy -> working, even against a stale hook prompt', () => {
+  const r = reg({ registryStatus: 'busy', hookStatus: 'prompt', open: true, openTool: 'Bash', ageMin: 30 });
+  assert.deepEqual(r, { state: 'working', statusSource: 'registry' });
+});
+
+test('registry shell -> working', () => {
+  assert.deepEqual(reg({ registryStatus: 'shell' }), { state: 'working', statusSource: 'registry' });
+});
+
+test('registry idle, fresh -> waiting', () => {
+  assert.deepEqual(reg({ registryStatus: 'idle' }), { state: 'waiting', statusSource: 'registry' });
+});
+
+test('registry idle, older than agentWaitingMinutes -> idle', () => {
+  const r = reg({ registryStatus: 'idle', registrySinceMs: NOW - 91 * 60000 });
+  assert.deepEqual(r, { state: 'idle', statusSource: 'registry' });
+});
+
+test('registry waiting -> prompt', () => {
+  assert.deepEqual(reg({ registryStatus: 'waiting' }), { state: 'prompt', statusSource: 'registry' });
+});
+
+test('a subagent ignores the registry status', () => {
+  const r = reg({ registryStatus: 'waiting', sub: true, ageMin: 0 });
+  assert.deepEqual(r, { state: 'working', statusSource: 'transcript' });
+});
+
+test('an open interactive tool still wins over registry busy', () => {
+  const r = reg({ registryStatus: 'busy', open: true, openTool: 'AskUserQuestion' });
+  assert.equal(r.state, 'prompt');
+});
+
+test('unknown registry status falls through to the hook', () => {
+  const r = reg({ registryStatus: 'frobnicating', hookStatus: 'waiting' });
+  assert.deepEqual(r, { state: 'waiting', statusSource: 'hook' });
+});
+
+test('absent registry status falls through to the heuristic', () => {
+  const r = reg({ registryStatus: null, ageMin: 0 });
+  assert.deepEqual(r, { state: 'working', statusSource: 'transcript' });
+});

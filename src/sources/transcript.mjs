@@ -48,12 +48,33 @@ async function readTail(file, bytes) {
  *  assistant, also keine cwd, keine Rolle. Zwei Test-Sessions ("Antworte
  *  nur mit dem Wort OK") standen deshalb mit leerer cwd im Hangar. Bleibt es
  *  auch nach 1 MB leer, landet die Figur ehrlich dort. */
-export async function readRoleRecords(file) {
+async function readTailRecords(file) {
   for (let bytes = TAIL_BYTES; ; bytes *= 4) {
     const { text, whole } = await readTail(file, bytes);
     const recs = roleRecords(text);
-    if (recs.length || whole || bytes >= TAIL_MAX_BYTES) return recs;
+    if (recs.length || whole || bytes >= TAIL_MAX_BYTES) return { recs, aiTitle: aiTitleOf(text) };
   }
+}
+
+export async function readRoleRecords(file) {
+  return (await readTailRecords(file)).recs;
+}
+
+/** The last `ai-title` record in the tail, else null. Claude Code writes it
+ *  as bookkeeping (no role), so roleRecords() drops it. */
+function aiTitleOf(text) {
+  let title = null;
+  for (const raw of text.split('\n')) {
+    const line = raw.trim();
+    if (!line.startsWith('{') || !line.includes('"ai-title"')) continue;
+    try {
+      const rec = JSON.parse(line);
+      if (rec.type === 'ai-title' && typeof rec.aiTitle === 'string') title = rec.aiTitle;
+    } catch {
+      // cut or broken line
+    }
+  }
+  return title;
 }
 
 /** Alle vollstaendigen Datensaetze mit Rollen-Information aus dem Tail, in
@@ -123,7 +144,7 @@ function pendingToolUse(recs) {
 /** Was aus einem Schwanz gebraucht wird, klein genug zum Cachen: nicht die
  *  Records selbst (ein Assistant-Record traegt seinen ganzen Text), nur die
  *  Felder, die Figur und Feld daraus bauen. */
-function analyze(recs) {
+function analyze(recs, aiTitle = null) {
   const last = recs[recs.length - 1] ?? null;
   // Juengster Rollen-Record mit Zeitstempel; praktisch immer der letzte.
   let lastMs = null;
@@ -152,6 +173,7 @@ function analyze(recs) {
       : null,
     cwds,
     open: pendingToolUse(recs),
+    aiTitle,
   };
 }
 
@@ -162,7 +184,8 @@ const cache = new Map();
 export async function tailInfo(entry) {
   const hit = cache.get(entry.path);
   if (hit && hit.mtimeMs === entry.mtimeMs && hit.size === entry.size) return hit.info;
-  const info = analyze(await readRoleRecords(entry.path));
+  const { recs, aiTitle } = await readTailRecords(entry.path);
+  const info = analyze(recs, aiTitle);
   cache.set(entry.path, { mtimeMs: entry.mtimeMs, size: entry.size, info });
   return info;
 }

@@ -42,6 +42,7 @@ const PROMPT_EDGE_TOLERANCE_MS = 2000;
  *
  *  `EnterPlanMode` gehoert NICHT dazu: das startet nur den Planungsmodus,
  *  es wartet nicht auf eine Antwort des Menschen. */
+const REGISTRY_STATUSES = new Set(['busy', 'shell', 'idle', 'waiting']);
 const INTERACTIVE_TOOLS = new Set(['AskUserQuestion', 'ExitPlanMode']);
 
 /** Die Zustandsentscheidung als reine Funktion ihrer Eingabe -- herausgeloest
@@ -68,6 +69,9 @@ export function decideState({
   openTool = null,
   openSinceMs = null,
   hookSinceMs = null,
+  registryStatus = null,
+  registrySinceMs = null,
+  nowMs = Date.now(),
   pendingMin,
   ageMin,
   recType,
@@ -81,6 +85,21 @@ export function decideState({
   // oder eine liegengebliebene Statusdatei sagt. Haerteste Aussage, schlaegt
   // alles, auch einen (falschen) Hook-Eintrag.
   if (isOpen === false) return { state: 'idle', statusSource: 'transcript' };
+
+  // The registry's own status is the first source for a live main session
+  // (measured with Agent Tower: `waiting` while a dialog is open, `busy` again
+  // on the answer; the hook keeps a stale `prompt`). Only the statuses listed
+  // here count; anything else falls through to the hook and the heuristics.
+  // An open interactive tool still wins, as in the hook branch below.
+  if (isOpen === true && !sub && REGISTRY_STATUSES.has(registryStatus)) {
+    if (open && INTERACTIVE_TOOLS.has(openTool)) return { state: 'prompt', statusSource: 'registry' };
+    if (registryStatus === 'waiting') return { state: 'prompt', statusSource: 'registry' };
+    if (registryStatus === 'idle') {
+      const stale = registrySinceMs != null && (nowMs - registrySinceMs) / MIN >= agentWaitingMinutes;
+      return { state: stale ? 'idle' : 'waiting', statusSource: 'registry' };
+    }
+    return { state: 'working', statusSource: 'registry' }; // busy, shell
+  }
 
   // Der Hook ist die einzige Quelle, die nicht raet — nur gueltig, solange
   // der Prozess nachweislich lebt, und nur fuer Hauptsessions: rec.sessionId
@@ -285,7 +304,10 @@ export async function loadAgents(cfg, scanned) {
         // trotzdem an einem unerwarteten Format scheitern.
         const hookSinceMs = hook ? parseMs(hook.since) : null;
 
+        const reg = isOpen === true && !sub ? live.get(sessionId) : null;
         const { state, statusSource } = decideState({
+          registryStatus: reg?.status ?? null,
+          registrySinceMs: reg?.statusUpdatedAtMs ?? null,
           hookStatus: hook?.status ?? null,
           open: Boolean(open),
           openTool: open?.tool ?? null,
@@ -338,6 +360,15 @@ export async function loadAgents(cfg, scanned) {
           // bleibt trotzdem hier, weil genau die Heuristik `waiting` liefern
           // kann (Ledger-Minor #10).
           state: sub && state === 'waiting' ? 'idle' : state,
+          // The registry's own status word (main sessions only).
+          registryStatus: reg?.status ?? null,
+          entrypoint: reg?.entrypoint ?? null,
+          // Registry name when the user or Claude Code chose it, else the
+          // transcript's ai-title, else any registry name; subagents: null.
+          title: sub
+            ? null
+            : ((reg?.name && (reg.nameSource === 'user' || reg.nameSource === 'auto') ? reg.name : null)
+              ?? info.aiTitle ?? reg?.name ?? null),
           // Woher die Aussage kommt. Steht im Panel, damit sichtbar bleibt,
           // wann die Karte weiss und wann sie raet.
           statusSource,

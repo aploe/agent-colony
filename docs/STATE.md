@@ -15,7 +15,7 @@ die Kommentare an `agents[].state` sind die Entscheidungslogik von
                                           // schlaegt sie (public/colony/i18n.mjs)
     reorder: { ringDelta, cooldownSeconds, animateMs } },
   counts: { projects, satellites, sessions, agents, open,
-    hookStatus,                            // Figuren, deren state per Hook gemeldet statt geraten ist
+    hookStatus,                            // Figuren, deren state per Registry oder Hook gemeldet statt geraten ist
     prompt, working, waiting, dirty, unpushed, unassigned },
   planets: [ { id, label, theme,
     ground,                                // Bodenpalette der 3D-Ansicht (Kit-Skin), aus der Config;
@@ -53,7 +53,13 @@ die Kommentare an `agents[].state` sind die Entscheidungslogik von
                                                 // selbst (Zeitstempel-Vergleich, 2s Toleranz,
                                                 // korrigiert 2026-09-13 -- "kein offener Aufruf"
                                                 // war als Kriterium falsch, siehe Fallen unten)
-        statusSource: 'hook' | 'transcript',    // hook = von der Session selbst gemeldet, sonst geraten
+        statusSource: 'registry' | 'hook' | 'transcript',  // registry = Status der Prozess-Registry (erste Quelle,
+                                                // nur Hauptsessions mit lebendem Prozess: busy/shell -> working,
+                                                // idle -> waiting (idle ab agentWaitingMinutes), waiting -> prompt);
+                                                // hook = von der Session selbst gemeldet, sonst geraten
+        registryStatus: 'busy' | 'idle' | 'waiting' | 'shell' | ... | null,  // Rohwert der Registry, nur Hauptsessions
+        entrypoint: <string> | null,            // Registry-Feld (z. B. cli), nur Hauptsessions mit lebendem Prozess
+        title: <string> | null,                 // Registry-Name (user/auto), sonst ai-title, sonst Registry-Name; Subagenten null
         liveSubagents: <n> | null,              // Hook-Markerzaehler, nur Hauptsessions, sonst null
         pending: { tool, minutes } | null,     // Rohbefund, auch unter der Schwelle
         ageMinutes } ] } ] } ] }
