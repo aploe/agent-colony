@@ -322,8 +322,7 @@ test('parseMs: null und undefined liefern null, kein Wurf', () => {
 });
 
 // Registry status first (made-up data).
-const NOW = Date.UTC(2026, 0, 1, 12, 0, 0);
-const reg = (over = {}) => decide({ nowMs: NOW, registrySinceMs: NOW - 60000, ...over });
+const reg = (over = {}) => decide(over);
 
 test('registry busy -> working, even against a stale hook prompt', () => {
   const r = reg({ registryStatus: 'busy', hookStatus: 'prompt', open: true, openTool: 'Bash', ageMin: 30 });
@@ -334,13 +333,24 @@ test('registry shell -> working', () => {
   assert.deepEqual(reg({ registryStatus: 'shell' }), { state: 'working', statusSource: 'registry' });
 });
 
-test('registry idle, fresh -> waiting', () => {
-  assert.deepEqual(reg({ registryStatus: 'idle' }), { state: 'waiting', statusSource: 'registry' });
+test('registry idle after a turn -> waiting, without a time cap', () => {
+  const r = reg({ registryStatus: 'idle', hookStatus: 'waiting', ageMin: 600 });
+  assert.deepEqual(r, { state: 'waiting', statusSource: 'registry' });
 });
 
-test('registry idle, older than agentWaitingMinutes -> idle', () => {
-  const r = reg({ registryStatus: 'idle', registrySinceMs: NOW - 91 * 60000 });
+test('registry idle, hook idle (fresh SessionStart) -> idle', () => {
+  const r = reg({ registryStatus: 'idle', hookStatus: 'idle' });
   assert.deepEqual(r, { state: 'idle', statusSource: 'registry' });
+});
+
+test('registry idle, stale hook prompt -> waiting', () => {
+  const r = reg({ registryStatus: 'idle', hookStatus: 'prompt', open: true, openTool: 'Bash' });
+  assert.deepEqual(r, { state: 'waiting', statusSource: 'registry' });
+});
+
+test('registry idle without a hook: the last record decides', () => {
+  assert.equal(reg({ registryStatus: 'idle', recType: 'assistant' }).state, 'waiting');
+  assert.equal(reg({ registryStatus: 'idle', recType: 'user' }).state, 'idle');
 });
 
 test('registry waiting -> prompt', () => {

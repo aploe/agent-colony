@@ -70,8 +70,6 @@ export function decideState({
   openSinceMs = null,
   hookSinceMs = null,
   registryStatus = null,
-  registrySinceMs = null,
-  nowMs = Date.now(),
   pendingMin,
   ageMin,
   recType,
@@ -95,8 +93,12 @@ export function decideState({
     if (open && INTERACTIVE_TOOLS.has(openTool)) return { state: 'prompt', statusSource: 'registry' };
     if (registryStatus === 'waiting') return { state: 'prompt', statusSource: 'registry' };
     if (registryStatus === 'idle') {
-      const stale = registrySinceMs != null && (nowMs - registrySinceMs) / MIN >= agentWaitingMinutes;
-      return { state: stale ? 'idle' : 'waiting', statusSource: 'registry' };
+      // The turn is over. Yellow or grey is what it was before the registry
+      // counted: the hook's word (`idle` only after a fresh SessionStart),
+      // else the last record. No time cap: an open session that waits for me
+      // keeps waiting, also after hours (see `withinCap` below).
+      const quiet = hookStatus != null ? hookStatus === 'idle' : recType !== 'assistant';
+      return { state: quiet ? 'idle' : 'waiting', statusSource: 'registry' };
     }
     return { state: 'working', statusSource: 'registry' }; // busy, shell
   }
@@ -307,7 +309,6 @@ export async function loadAgents(cfg, scanned) {
         const reg = isOpen === true && !sub ? live.get(sessionId) : null;
         const { state, statusSource } = decideState({
           registryStatus: reg?.status ?? null,
-          registrySinceMs: reg?.statusUpdatedAtMs ?? null,
           hookStatus: hook?.status ?? null,
           open: Boolean(open),
           openTool: open?.tool ?? null,
