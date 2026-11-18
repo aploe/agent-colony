@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, extname, join, normalize } from 'node:path';
 import { collect, loadConfig } from './collect.mjs';
 import { openSession, UUID } from './vscode.mjs';
+import { createAnswering, sessionRows } from './answers.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const cfg = await loadConfig();
@@ -76,11 +77,34 @@ const MOUNTS = [
 // sieht, lang genug, dass fuenf Tabs nicht fuenfmal erheben.
 const CACHE_MS = ((cfg.pollSeconds ?? 3) * 1000) / 2;
 let cache = { at: 0, state: null };
-async function state() {
-  if (Date.now() - cache.at < CACHE_MS && cache.state) return cache.state;
-  cache = { at: Date.now(), state: await collect(cfg) };
-  return cache.state;
+let generation = 0;
+// A store change (a request held or answered) drops the cache, and a collect that was
+// already running must not put its older result back.
+function invalidate() {
+  generation++;
+  cache = { at: 0, state: null };
 }
+async function state({ fresh = false } = {}) {
+  if (!fresh && Date.now() - cache.at < CACHE_MS && cache.state) return withRequests(cache.state);
+  const gen = generation;
+  const collected = await collect(cfg);
+  if (gen === generation) cache = { at: Date.now(), state: collected };
+  return withRequests(collected);
+}
+// Held permission requests ride on their main agent's row. They never change `state` or the
+// counts: the held request is a fact about the dialog, not about the session's activity.
+function withRequests(st) {
+  for (const [id, agent] of sessionRows(st)) agent.requests = answering.listFor(id);
+  return st;
+}
+
+const answering = createAnswering({
+  getState: state,
+  invalidate,
+  enabled: cfg.answerInPanel !== false,
+  log: (line) => console.log(line),
+  pollMs: (cfg.pollSeconds ?? 3) * 1000 / 2,
+});
 
 /* Der Endpoint unten startet Prozesse — als Einziger hier. Darum drei enge
  * Leitplanken, jede gegen einen eigenen Fehlgriff:
@@ -158,6 +182,10 @@ const server = createServer(async (req, res) => {
       res.end(JSON.stringify(await state()));
       return;
     }
+    // The second outward channel: held permission requests and their answers
+    // (src/answers.mjs). Errors there never reach the catch below as a 500 for the hook.
+    if (url.pathname === '/api/hook/permission-request') return await answering.handleHook(req, res);
+    if (url.pathname === '/api/answer') return await answering.handleAnswer(req, res);
     // Klick auf eine Agentenzeile im Panel: Session als Tab in VS Code. Warum
     // der Server das tut und nicht der Browser mit einem vscode:-Link: das
     // Zielfenster muss in der URI stehen (vscode.mjs erklaert, warum), und
@@ -252,3 +280,16 @@ server.listen(cfg.port, host, () => {
     );
   }
 });
+
+/* Shutdown: hand every held request back ("no decision", ending E7) so no run keeps waiting
+ * on a dead server, give the sockets 100 ms to flush, then close and leave. */
+for (const signal of ['SIGTERM', 'SIGINT']) {
+  process.on(signal, () => {
+    answering.endAll('E7');
+    setTimeout(() => {
+      server.closeAllConnections();
+      server.close();
+      process.exit(0);
+    }, 100);
+  });
+}

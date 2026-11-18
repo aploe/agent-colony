@@ -13,6 +13,8 @@ die Kommentare an `agents[].state` sind die Entscheidungslogik von
     language,                             // Sprache der Beschriftungen, Dateiname unter
                                           // public/i18n/ (Vorgabe 'en'); ?lang= in der URL
                                           // schlaegt sie (public/colony/i18n.mjs)
+    answerInPanel,                        // true: Berechtigungsanfragen werden gehalten und im Panel
+                                          // beantwortet (src/answers.mjs); Config `answerInPanel`
     reorder: { ringDelta, cooldownSeconds, animateMs } },
   counts: { projects, satellites, sessions, agents, open,
     hookStatus,                            // Figuren, deren state per Registry oder Hook gemeldet statt geraten ist
@@ -59,6 +61,15 @@ die Kommentare an `agents[].state` sind die Entscheidungslogik von
                                                 // hook = von der Session selbst gemeldet, sonst geraten
         registryStatus: 'busy' | 'idle' | 'waiting' | 'shell' | ... | null,  // Rohwert der Registry, nur Hauptsessions
         entrypoint: <string> | null,            // Registry-Feld (z. B. cli), nur Hauptsessions mit lebendem Prozess
+        requests: [ { id, kind: 'permission'|'question', via: 'main'|'subagent', tool,
+                      detail,               // permission: the whole command/path/URL, never shortened
+                      extras[],             // permission: other inputs as "key: <JSON>" lines
+                      questions,            // question: [ { question, header, multiSelect,
+                                            //   options: [ { label, description } ] } ], else null
+                      since } ],            // ISO; newest first, [] when none, only main agents.
+                                            // Held PermissionRequest hook calls (POST
+                                            // /api/hook/permission-request); answered via
+                                            // POST /api/answer. Never changes state or counts.
         title: <string> | null,                 // Registry-Name (user/auto), sonst ai-title, sonst Registry-Name; Subagenten null
         liveSubagents: <n> | null,              // Hook-Markerzaehler, nur Hauptsessions, sonst null
         pending: { tool, minutes } | null,     // Rohbefund, auch unter der Schwelle

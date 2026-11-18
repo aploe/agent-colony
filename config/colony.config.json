@@ -5,6 +5,7 @@
   "language": "en",
   "gitCacheSeconds": 20,
   "shadows": false,
+  "answerInPanel": true,
   "maxFps": 30,
   "maxPixelRatio3d": 1.5,
   "subRepos": { "depth": 2, "maxSatellites": 12, "skipDirs": ["node_modules", "vendor"] },

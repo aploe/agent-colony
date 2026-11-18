@@ -90,6 +90,9 @@ export async function collect(cfg) {
       // bisherigen Bild: an. Aus spart die Schattenkarte je Frame (gemessen
       // 2026-09-16, fundus/messungen/2026-09-16-ressourcen).
       shadows: cfg.shadows !== false,
+      // Whether permission requests are held for answering in the panel
+      // (src/answers.mjs). Off: every hook call gets no decision at once.
+      answerInPanel: cfg.answerInPanel !== false,
       // Hoechstens so viele Frames pro Sekunde fuer die Dauer-Animation
       // (laufende Figuren, pulsierende Blasen) in beiden Renderern, und
       // hoechstens diese Pixeldichte fuer die 3D-Flaeche (2D zeichnet immer
