@@ -41,12 +41,17 @@ few colours that each mean exactly one thing:
 When you spot the yellow sign, click the agent in the side panel. Its session
 opens as a tab in VS Code, in the window that already has the folder open, or
 in a new one. From "someone is waiting" to typing the answer is one click.
+With the answer hook installed, an orange one can be answered right there:
+allow or deny a permission prompt, or pick the options of a question (see
+"Answering in the panel").
 
 ![Agent Colony in 2D: one field per repo, families of sub-repos, agents waiting on the automations field](docs/img/map-2d.png)
 
 Everything runs locally. The map reads `~/.claude/` and your repositories and
 writes nothing back; there is no database and no cloud service behind it.
-Delete it and nothing is missing.
+The only thing that ever reaches a session is your own click on an answer
+in the panel, and only with the answer hook installed. Delete it and nothing
+is missing.
 
 What else is on the map:
 
@@ -60,7 +65,8 @@ What else is on the map:
   lies behind the colony. Switching views keeps selection and folded
   families.
 
-The interface is German for now; an English version is planned.
+The interface speaks English, German, Spanish and French (see "Interface
+language").
 
 ## Requirements
 
@@ -267,10 +273,59 @@ groups whose command points to its own script.
 ```
 
 Two things the hook cannot see. There is no event for "permission granted",
-and none for a question to you (`AskUserQuestion`, plan approval). Both still
-come from the transcript: the question through the open tool call, the
-granted permission through a timestamp comparison between the prompt and the
-next tool call after it.
+and none for a question to you (`AskUserQuestion`, plan approval). Newer
+Claude Code versions say both themselves: their session registry
+(`~/.claude/sessions/<pid>.json`) carries a `status` that turns `waiting`
+while a dialog or question is open and back to `busy` when it is answered.
+When that status is there, the map takes it first, for every open main
+session. Only without it do the hook and the transcript decide: the question
+through the open tool call, the granted permission through a timestamp
+comparison between the prompt and the next tool call after it.
+
+## Answering in the panel
+
+A second, optional hook lets you answer from the map. Claude Code then hands
+each permission request to the map's server as well, which holds it until
+you click:
+
+- a permission prompt shows the whole command (or URL, or file path) and the
+  call's other inputs, with "Allow" and "Deny";
+- an `AskUserQuestion` shows every question with its options and "Send",
+  single and multiple choice.
+
+The dialog in VS Code stays usable the whole time; whichever side answers
+first wins, and the other one notices within a few seconds. "Deny" stops the
+session as "No" in VS Code does.
+
+```bash
+node scripts/install-hooks.mjs --answer              # install the answer hook
+node scripts/install-hooks.mjs --answer --uninstall  # remove only it
+node scripts/install-hooks.mjs --uninstall           # remove status and answer hooks
+```
+
+The installer adds one `http` entry under `hooks.PermissionRequest` in
+`~/.claude/settings.json`, pointing at `http://127.0.0.1:<port>/api/hook/permission-request`
+with a 12-hour timeout, and copies the file to `scratchpad/settings-backups/`
+before every write. Other entries on the same event stay untouched, also
+another tool's `http` hook; Claude Code runs them side by side and takes the
+first decision. A running session picks the hook up with its next request.
+
+What it never does:
+
+- decide anything by itself. A request is answered only by a click on that
+  very request; there are no rules, no remembering and no default. Answer
+  controls ignore clicks for half a second after they appeared or moved.
+- slow a session down. With the server stopped, the setting off, or for
+  anything it does not hold, Claude Code carries on as without the hook.
+- log or store what a request says.
+
+It only holds requests of VS Code sessions on this machine (WSL) that are
+open and visible on the map. Plan approvals, "always allow", a typed reason
+for a denial and the free-text answer of a question stay in VS Code.
+`answerInPanel: false` in the config (then restart the server) turns
+answering off without touching `settings.json`. The port is part of the hook
+URL: run `--answer --uninstall` before you change `port`, then `--answer`
+again.
 
 ## 3D view
 
@@ -348,6 +403,7 @@ falling back to the defaults.
 | `vscodeCli` | Path to the `code` CLI, in case the search under `~/.vscode-server/bin/*/bin/remote-cli/code` fails. Usually empty |
 | `vaultPath`, `vaultName`, `projectsDir`, `noteMapping` | Obsidian vault and notes folder for the optional note link; `noteMapping` maps repo paths to note titles, otherwise the name is used |
 | `hookStatusDir` | Location of the hook status files, for the reader only. Default `${XDG_RUNTIME_DIR:-/tmp}/agent-colony` |
+| `answerInPanel` | Answer held permission requests and questions in the panel, default `true`. `false`: the server hands every hook call straight back. See "Answering in the panel" |
 
 ### Interface language
 
@@ -388,8 +444,9 @@ still reaches it; a request through the WSL IP no longer does.
 |---|---|
 | `~/.claude/projects/<encoded path>/` | Fields, session and subagent counts, last activity from the newest record in the transcript rather than the file mtime |
 | `…/subagents/*.jsonl` and `*.meta.json` | Subagents as small figures, their name and task |
-| `~/.claude/sessions/<pid>.json` checked against `/proc/<pid>/stat` | Whether a session's Claude process is still alive |
+| `~/.claude/sessions/<pid>.json` checked against `/proc/<pid>/stat` | Whether a session's Claude process is still alive; its own status (working, a dialog open, turn over) and its title |
 | `${XDG_RUNTIME_DIR:-/tmp}/agent-colony/` | Optionally the state a session reported itself (status hooks) |
+| `POST /api/hook/permission-request` | Optionally the permission requests the answer hook hands over, held in memory only |
 | `git status`, `rev-list`, `log` per repo | Border and skyline |
 | Notes in an Obsidian vault | Only an optional link, controls nothing |
 
@@ -416,10 +473,16 @@ guessed data.
 
 ## Known limits
 
-- Without the status hook the agent state is heuristic. Whether a session is
-  open is always certain; what it is doing is inferred from the transcript.
-  Subagents stay heuristic even with the hook, because their hook events carry
-  no state.
+- Without a registry status (older Claude Code) and without the status hook
+  the agent state is heuristic. Whether a session is open is always certain;
+  what it is doing is inferred from the transcript. Subagents stay heuristic
+  in every case, because registry and hook speak for the main session.
+- Answer buttons appear up to a few seconds after the dialog, and disappear
+  up to a few seconds after an answer in VS Code. A headless `claude -p`
+  started from a VS Code terminal waits about six seconds for its "no
+  decision" at each permission request while the server runs.
+- A held request of a session in the hangar, or on a field folded into its
+  family, has no panel to show it. It stays answerable in VS Code.
 - Without the hook, orange can be a long-running tool. A four-minute Bash run
   looks like a permission prompt in the transcript, which is why the panel
   says "unbeantworteter Tool-Aufruf" (unanswered tool call) rather than
