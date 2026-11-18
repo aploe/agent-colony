@@ -169,6 +169,59 @@ body {
 #panel .open-note.wait { color: var(--muted); }
 #panel .open-note.bad { color: var(--prompt); }
 
+/* Gehaltene Anfrage unter der Agentenzeile (src/answers.mjs). Der Rahmen
+ * traegt den Ton der Zustandspille daneben (`prompt`), der Hauptknopf das
+ * Blau, das im Panel schon "in VS Code oeffnen" heisst: keine neue
+ * Signalfarbe. Befehle brechen um und werden nie gekuerzt; ab etwa acht
+ * Zeilen scrollt die Box, die uebrigen Eingaben stehen darunter. */
+#panel .req {
+  margin: 8px 0 2px; padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--prompt) 55%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--prompt) 5%, var(--panel));
+}
+#panel .req-origin { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+#panel .req-detail {
+  max-height: 9.5em; overflow: auto;
+  padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg);
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-variant-ligatures: none; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+#panel .req-tool { color: var(--muted); }
+#panel .req-extras {
+  margin-top: 4px; color: var(--muted);
+  font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-variant-ligatures: none; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+#panel .req-q + .req-q { margin-top: 10px; }
+#panel .req-text { margin: 4px 0 6px; font-size: 13px; overflow-wrap: anywhere; }
+#panel .req-opts { display: flex; flex-direction: column; gap: 4px; }
+#panel .req-opt {
+  display: flex; align-items: flex-start; gap: 8px; width: 100%;
+  padding: 5px 8px; text-align: left;
+  font: inherit; font-size: 12px; color: var(--fg);
+  background: none; border: 1px solid var(--line); border-radius: 6px; cursor: pointer;
+  overflow-wrap: anywhere;
+}
+#panel .req-opt:hover { background: color-mix(in srgb, var(--fg) 7%, transparent); }
+#panel .req-opt .mark {
+  flex: none; width: 11px; height: 11px; margin-top: 3px;
+  border: 1.5px solid var(--muted); border-radius: 50%;
+}
+#panel .req-opt.multi .mark { border-radius: 3px; }
+#panel .req-opt.on { border-color: #1f6feb; background: color-mix(in srgb, #1f6feb 14%, transparent); }
+#panel .req-opt.on .mark { border-color: #1f6feb; background: #1f6feb; }
+#panel .req-btns { display: flex; gap: 6px; margin-top: 8px; }
+#panel .req-answer {
+  padding: 3px 14px; font: inherit; font-size: 12px; color: var(--fg);
+  background: none; border: 1px solid var(--line); border-radius: 999px; cursor: pointer;
+}
+#panel .req-answer:hover { background: color-mix(in srgb, var(--fg) 10%, transparent); }
+#panel .req-answer.primary { background: #1f6feb; border-color: #1f6feb; color: #fff; }
+#panel .req-answer.primary:hover { background: #388bfd; }
+#panel .req-answer:focus-visible, #panel .req-opt:focus-visible { outline: 1px solid var(--muted); }
+#panel .req-answer:disabled, #panel .req-opt:disabled { opacity: .45; cursor: default; }
+
 /* Zwei Gruppen, getrennt nach dem, was sie beschreiben: das Feld (Flaeche +
  * Rand = Projekt) und die Figuren darauf (Agenten). Ein Trennstrich zwischen
  * den Gruppen, die Untergruppen Flaeche/Rand bleiben als gedaempfte Labels. */

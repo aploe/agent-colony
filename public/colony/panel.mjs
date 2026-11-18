@@ -2,6 +2,7 @@
  * in den Vault. Reines DOM, kein Canvas. */
 
 import { groupAgents } from './agents.mjs';
+import { ARM_MS, choicesComplete, layoutSignature, requestsOf, toggleChoice } from './answer.mjs';
 import { escapeHtml, familyDot } from './html.mjs';
 import { t } from './i18n.mjs';
 import { childrenOf, index, rootOf } from './hexmap.mjs';
@@ -29,6 +30,81 @@ let busy = false;
  * Blick — auch dann, wenn der Leser gerade woanders in der Liste liest. */
 let scrolledTo = null;
 
+/* Antworten auf gehaltene Anfragen (src/answers.mjs). Auch das liegt ausserhalb
+ * des Renderns, weil das Panel bei jedem Poll neu gebaut wird:
+ *  - choices: Auswahl je Anfrage-ID, eine Liste Optionsindizes je Frage
+ *  - sending: Anfragen, deren Antwort unterwegs oder angenommen ist; ihre
+ *    Knoepfe bleiben aus, bis die Anfrage aus dem Zustand verschwindet
+ *  - armAt: vorher nimmt kein Antwortknopf einen Klick an (ARM_MS)
+ *  - layout: wo die Bloecke beim letzten Rendern standen
+ *  - scroll: Scrollstand der Befehlsboxen, ueber das Neuzeichnen gerettet */
+const ans = { choices: new Map(), sending: new Set(), armAt: 0, layout: '', scroll: new Map(), openedHex: null };
+
+/* Ein Fenster, das aus dem Hintergrund zurueckkommt, liegt unter dem Zeiger:
+ * die Antwortknoepfe ruhen dann kurz wie nach jeder Verschiebung. Nicht bei
+ * focus: der Klick, der den Fokus bringt, ist genau der, der zaehlen soll. */
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) ans.armAt = performance.now() + ARM_MS;
+});
+
+/* Alle Anfragen, die der Server gerade haelt, ueber alle Planeten: wer nicht
+ * mehr drin ist, verliert Auswahl und Sperre. */
+function heldIds() {
+  const ids = new Set();
+  for (const p of app.state?.planets ?? []) {
+    const agents = [...(p.station?.agents ?? []), ...(p.hexes ?? []).flatMap((h) => h.agents ?? [])];
+    for (const a of agents) for (const r of requestsOf(a)) ids.add(r.id);
+  }
+  return ids;
+}
+
+/* Ein Block je gehaltener Anfrage, unter der Agentenzeile. Jeder Text aus der
+ * Anfrage geht durch escapeHtml; die Knoepfe tragen nur Index und Aktion, nie
+ * Antworttext. */
+function requestBlock(a, r) {
+  const busy = ans.sending.has(r.id);
+  const off = busy ? ' disabled' : '';
+  const origin = r.via === 'subagent'
+    ? '<div class="req-origin">' + escapeHtml(t('answer.fromSubagent')) + '</div>'
+    : '';
+  let inner;
+  if (r.kind === 'question') {
+    const questions = r.questions ?? [];
+    const choices = ans.choices.get(r.id);
+    inner = questions.map((q, k) =>
+      '<div class="req-q">' +
+      (q.header ? '<span class="tag">' + escapeHtml(q.header) + '</span>' : '') +
+      '<div class="req-text">' + escapeHtml(q.question) + '</div>' +
+      '<div class="req-opts">' +
+      q.options.map((o, i) => {
+        const on = choices?.[k]?.includes(i) ?? false;
+        return '<button type="button" class="req-opt' + (on ? ' on' : '') + (q.multiSelect ? ' multi' : '') +
+          '" data-q="' + k + '" data-i="' + i + '" role="' + (q.multiSelect ? 'checkbox' : 'radio') +
+          '" aria-checked="' + on + '"' + (o.description ? ' title="' + escapeHtml(o.description) + '"' : '') +
+          off + '><span class="mark"></span><span>' + escapeHtml(o.label) + '</span></button>';
+      }).join('') +
+      '</div></div>').join('') +
+      '<div class="req-btns"><button type="button" class="req-answer primary" data-act="send"' +
+      (busy || !choicesComplete(questions, choices) ? ' disabled' : '') + '>' +
+      escapeHtml(t('answer.send')) + '</button></div>';
+  } else {
+    // Der ganze Befehl, ungekuerzt; die uebrigen Eingaben des Aufrufs darunter,
+    // nie hinter dem Scroll der Box: eine davon kann der Grund der Abfrage sein.
+    inner =
+      '<div class="req-detail" data-req="' + escapeHtml(r.id) + '"><span class="req-tool">' +
+      escapeHtml(r.tool) + ': </span>' + escapeHtml(r.detail ?? '') + '</div>' +
+      ((r.extras ?? []).length
+        ? '<div class="req-extras">' + r.extras.map((l) => '<div>' + escapeHtml(l) + '</div>').join('') + '</div>'
+        : '') +
+      '<div class="req-btns">' +
+      '<button type="button" class="req-answer primary" data-act="allow"' + off + '>' + escapeHtml(t('answer.allow')) + '</button>' +
+      '<button type="button" class="req-answer" data-act="deny"' + off + '>' + escapeHtml(t('answer.deny')) + '</button>' +
+      '</div>';
+  }
+  return '<div class="req" data-req="' + escapeHtml(r.id) + '" data-key="' + escapeHtml(a.key) + '">' +
+    origin + inner + '</div>';
+}
+
 /* VS-Code-Link ueber WSL-Remote. Die Distro kommt aus der Config bzw. aus
  * WSL_DISTRO_NAME des Servers — ohne sie ist die URI sinnlos, dann kein Link. */
 function vscodeLink(path) {
@@ -38,6 +114,50 @@ function vscodeLink(path) {
     '<a class="open" href="vscode://vscode-remote/wsl+' +
     encodeURIComponent(distro) + path + '">' + escapeHtml(t('panel.openInVscode')) + '</a>'
   );
+}
+
+function findRequest(h, id) {
+  for (const a of h.agents ?? []) {
+    const r = requestsOf(a).find((x) => x.id === id);
+    if (r) return { a, r };
+  }
+  return null;
+}
+
+/* Erlauben, Ablehnen oder Senden. Nach einem Ja des Servers bleibt der Block
+ * aus, bis die Anfrage aus dem Zustand verschwindet (naechster Poll); eine
+ * Absage steht vier Sekunden unter der Agentenzeile und gibt die Knoepfe
+ * wieder frei. Der Server prueft alles noch einmal, die Seite schickt nur
+ * Aktion und Optionsindizes. */
+async function answer(h, a, r, payload) {
+  if (ans.sending.has(r.id)) return;
+  ans.sending.add(r.id);
+  renderPanel(h);
+  let error = null;
+  try {
+    const res = await fetch('/api/answer', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionId: a.sessionId, requestId: r.id, ...payload }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (data.ok !== true) {
+      error = data.error === 'gone' ? t('answer.gone') : data.error ?? t('panel.error', { status: res.status });
+    }
+  } catch (err) {
+    error = err.message;
+  }
+  if (error) {
+    ans.sending.delete(r.id);
+    const shown = { key: a.key, hexId: h.id, text: error, kind: 'bad' };
+    note = shown;
+    setTimeout(() => {
+      if (note !== shown) return;
+      note = null;
+      if (app.selected?.id === h.id) renderPanel(app.selected);
+    }, 4000);
+  }
+  if (app.selected?.id === h.id) renderPanel(app.selected);
 }
 
 function renderPanel(h) {
@@ -51,6 +171,14 @@ function renderPanel(h) {
   // braucht sie fuer den Fenstertitel). Dann ist der Knopf tot statt
   // scheinbar bereit — dieselbe Regel wie beim Link darueber.
   const canOpen = Boolean(app.state?.config?.wslDistro);
+
+  // Gehaltene Anfragen nur, wenn der Server das Antworten nicht abgeschaltet
+  // hat (config.answerInPanel). Was nicht mehr gehalten wird, vergisst seine
+  // Auswahl und seine Sperre.
+  const answering = app.state?.config?.answerInPanel !== false;
+  const held = heldIds();
+  for (const id of ans.choices.keys()) if (!held.has(id)) ans.choices.delete(id);
+  for (const id of ans.sending) if (!held.has(id)) ans.sending.delete(id);
 
   let gitDetail = gitLabel(h.gitState);
   if (h.gitState === 'dirty') gitDetail += ' ' + t('panel.gitDirty', { n: h.dirty });
@@ -147,13 +275,15 @@ function renderPanel(h) {
       : a.open === false
         ? ' · ' + escapeHtml(t('panel.agentEnded'))
         : '') +
-    (a.statusSource === 'hook'
+    (a.statusSource === 'hook' || a.statusSource === 'registry'
       ? ' <span class="tag src">' + escapeHtml(t('panel.reported')) + '</span>'
       : '') +
     (n > 0
       ? ' <span class="tag src">' + escapeHtml(t('panel.liveSubagents', { n })) + '</span>'
       : '') +
-    (a.name ? ' <b>' + escapeHtml(a.name) + '</b>' : '') +
+    // Subagent: Name aus dem Sidecar. Hauptsession: ihr Titel (Registry-Name
+    // oder ai-title aus dem Transkript), sonst nichts.
+    (a.name || a.title ? ' <b>' + escapeHtml(a.name || a.title) + '</b>' : '') +
     (a.gitBranch ? ' <span class="tag">' + escapeHtml(a.gitBranch) + '</span>' : '') +
     (a.pending
       ? '<br><span class="pending">' +
@@ -166,6 +296,7 @@ function renderPanel(h) {
     (note?.key === a.key
       ? '<br><span class="open-note ' + note.kind + '">' + escapeHtml(note.text) + '</span>'
       : '') +
+    (answering ? requestsOf(a).map((r) => requestBlock(a, r)).join('') : '') +
     '</div>';
   };
 
@@ -239,6 +370,10 @@ function renderPanel(h) {
   const inFamily = root !== h || kids.length > 0;
   const dot = inFamily ? familyDot(root.path) : '';
 
+  // Wer gerade einen langen Befehl in seiner Box liest, soll beim Poll nicht
+  // wieder oben landen.
+  for (const box of body.querySelectorAll('.req-detail')) ans.scroll.set(box.dataset.req, box.scrollTop);
+
   body.innerHTML =
     '<h2>' + dot + escapeHtml(h.title) + '</h2>' +
     '<code>' + escapeHtml(h.path) + '</code>' +
@@ -272,6 +407,26 @@ function renderPanel(h) {
   // (Worktrees eines Repos sind eigene Felder und tragen darum ihren eigenen
   // Pfad). Der Server prueft ihn ohnehin gegen die eigene Erhebung.
   body.onclick = async (ev) => {
+    // Alles innerhalb eines Anfrage-Blocks gehoert dem Block: kein Oeffnen,
+    // kein Markieren. Ein Klick zaehlt nur auf einem freien Knopf und erst
+    // nach der Klicksperre.
+    const block = ev.target.closest?.('.req');
+    if (block) {
+      const btn = ev.target.closest('button');
+      if (!btn || btn.disabled || performance.now() < ans.armAt) return;
+      const found = findRequest(h, block.dataset.req);
+      if (!found) return;
+      const { a, r } = found;
+      if (btn.classList.contains('req-opt')) {
+        ans.choices.set(r.id, toggleChoice(r.questions, ans.choices.get(r.id), Number(btn.dataset.q), Number(btn.dataset.i)));
+        renderPanel(h);
+        return;
+      }
+      const act = btn.dataset.act;
+      if (act === 'send') return answer(h, a, r, { behavior: 'allow', choices: ans.choices.get(r.id) });
+      if (act === 'allow' || act === 'deny') return answer(h, a, r, { behavior: act });
+      return;
+    }
     const el = ev.target.closest?.('button.open-session');
     if (!el) return;
     if (busy) return;
@@ -306,7 +461,36 @@ function renderPanel(h) {
     if (app.selected?.id === h.id) renderPanel(app.selected);
   };
 
-  document.getElementById('panel').hidden = false;
+  const panel = document.getElementById('panel');
+  const opened = panel.hidden || ans.openedHex !== h.id;
+  ans.openedHex = h.id;
+  panel.hidden = false;
+
+  // Ab hier ist das Panel sichtbar und hat sein echtes Layout; vorher waeren
+  // alle Positionen 0, und der naechste Render saehe eine Verschiebung, die
+  // es nie gab.
+  const boxes = [...body.querySelectorAll('.req-detail')];
+  for (const box of boxes) box.scrollTop = ans.scroll.get(box.dataset.req) ?? 0;
+  ans.scroll = new Map(boxes.map((box) => [box.dataset.req, box.scrollTop]));
+
+  // Wird ein Feld geoeffnet, das eine gehaltene Anfrage hat, steht deren
+  // Block unter den Kennzahlen ausser Sicht. Einmal je Oeffnen in den Blick
+  // holen, sofort statt weich: der Feldwechsel startet die Klicksperre unten
+  // ohnehin, und eine Fahrt, die laenger dauert als die Sperre, schoebe einen
+  // Knopf unter einen Zeiger, der schon wieder scharf ist.
+  const blockEls = [...body.querySelectorAll('.req')];
+  if (opened && blockEls.length && !app.markedAgent) blockEls[0].scrollIntoView({ block: 'nearest' });
+
+  // Klicksperre: ist ein Block erschienen, verschwunden oder verrutscht, hat
+  // das Panel seine Hoehe oder sein Feld gewechselt, nimmt fuer ARM_MS kein
+  // Antwortknopf einen Klick an. Ein Klick, der schon unterwegs war, als die
+  // Liste sich unter dem Zeiger bewegte, darf nichts erlauben.
+  const blocks = blockEls.map((b) => ({ id: b.dataset.req, top: b.offsetTop }));
+  const layout = layoutSignature({ hexId: h.id, height: body.scrollHeight, blocks });
+  if (layout !== ans.layout) {
+    ans.layout = layout;
+    ans.armAt = performance.now() + ARM_MS;
+  }
 
   // Die markierte Zeile in den Blick holen, aber nur einmal je Figur: das
   // Panel zeichnet sich bei jedem Poll neu, ein Scroll je Runde waere ein

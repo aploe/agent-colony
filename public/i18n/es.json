@@ -185,5 +185,13 @@
     "unit": "Commits",
     "last14": "últimos 14 días",
     "last7": "últimos 7 días"
+  },
+
+  "answer": {
+    "allow": "Permitir",
+    "deny": "Denegar",
+    "send": "Enviar",
+    "fromSubagent": "de un subagente",
+    "gone": "Esta solicitud ya no está abierta"
   }
 }

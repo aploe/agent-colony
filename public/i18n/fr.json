@@ -185,5 +185,13 @@
     "unit": "Commits",
     "last14": "14 derniers jours",
     "last7": "7 derniers jours"
+  },
+
+  "answer": {
+    "allow": "Autoriser",
+    "deny": "Refuser",
+    "send": "Envoyer",
+    "fromSubagent": "d'un sous-agent",
+    "gone": "Cette demande n'est plus ouverte"
   }
 }
