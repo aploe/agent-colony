@@ -220,3 +220,86 @@ test('M3: kaputtes JSON in der Settings-Datei bricht kontrolliert ab', () => {
   assert.equal(readFileSync(settingsFile, 'utf8'), before);
   rmSync(dir, { recursive: true, force: true });
 });
+
+// ---- Answer hook ----
+import { planAnswerInstall, planAnswerUninstall, answerEntry, backupName } from '../scripts/install-hooks.mjs';
+
+const PORT = 4999;
+const foreign = { matcher: '*', hooks: [{ type: 'http', url: 'http://127.0.0.1:4188/api/hook/permission-request', timeout: 600 }] };
+const withForeign = () => applyHooks({ hooks: { PermissionRequest: [structuredClone(foreign)] } }, HOOK);
+
+test('answer: foreign http entry on another port stays, own entry is appended', () => {
+  const { changed, next } = planAnswerInstall(withForeign(), PORT);
+  assert.equal(changed, true);
+  const list = next.hooks.PermissionRequest;
+  assert.deepEqual(list[0], foreign);
+  assert.deepEqual(list.at(-1), answerEntry(PORT));
+  assert.equal(list.length, 3);
+});
+
+test('answer: re-install is idempotent and reports no change', () => {
+  const once = planAnswerInstall(withForeign(), PORT).next;
+  const again = planAnswerInstall(structuredClone(once), PORT);
+  assert.equal(again.changed, false);
+  assert.deepEqual(again.next, once);
+});
+
+test('answer: own entry with another timeout or localhost is replaced in place', () => {
+  const base = withForeign();
+  const stale = structuredClone(base);
+  stale.hooks.PermissionRequest.push({ matcher: '*', hooks: [{ type: 'http', url: `http://localhost:${PORT}/api/hook/permission-request`, timeout: 5 }] });
+  const { changed, next } = planAnswerInstall(stale, PORT);
+  assert.equal(changed, true);
+  assert.deepEqual(next.hooks.PermissionRequest.at(-1), answerEntry(PORT));
+  assert.equal(next.hooks.PermissionRequest.length, stale.hooks.PermissionRequest.length);
+});
+
+test('answer: a port change leaves the old-port entry alone (same path as a foreign tool)', () => {
+  const on4999 = planAnswerInstall(withForeign(), PORT).next;
+  const { next } = planAnswerInstall(on4999, 5001);
+  const urls = next.hooks.PermissionRequest.flatMap((m) => m.hooks.map((h) => h.url ?? ''));
+  assert.ok(urls.some((u) => u.includes(':4999')));
+  assert.ok(urls.some((u) => u.includes(':5001')));
+});
+
+test('answer: own hook sharing a group with a foreign hook is removed alone', () => {
+  const shared = { matcher: '*', hooks: [answerEntry(PORT).hooks[0], { type: 'command', command: 'echo x' }] };
+  const { next } = planAnswerUninstall({ hooks: { PermissionRequest: [shared] } }, PORT);
+  assert.deepEqual(next.hooks.PermissionRequest, [{ matcher: '*', hooks: [{ type: 'command', command: 'echo x' }] }]);
+});
+
+test('answer: --answer --uninstall keeps status hook and foreign entry', () => {
+  const full = planAnswerInstall(withForeign(), PORT).next;
+  const { next } = planAnswerUninstall(full, PORT);
+  assert.deepEqual(next, withForeign());
+});
+
+test('answer: plain uninstall removes both own kinds, foreign stays', () => {
+  const full = planAnswerInstall(withForeign(), PORT).next;
+  const out = planAnswerUninstall(removeHooks(full, HOOK), PORT).next;
+  assert.deepEqual(out, { hooks: { PermissionRequest: [foreign] } });
+});
+
+test('answer: uninstall of nothing and malformed shapes', () => {
+  assert.equal(planAnswerUninstall({}, PORT).changed, false);
+  assert.throws(() => planAnswerInstall({ hooks: { PermissionRequest: 'x' } }, PORT), /not a list/);
+});
+
+test('answer: backupName format', () => {
+  assert.match(backupName(new Date(2030, 0, 2, 3, 4, 5, 6)), /^settings-20300102-030405-006\.json$/);
+});
+
+test('answer: full run against a settings copy writes a backup and one entry', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'colony-answer-'));
+  const file = join(dir, 'settings.json');
+  writeFileSync(file, JSON.stringify({ model: 'x', hooks: { PermissionRequest: [foreign] } }));
+  const out = execFileSync('node', [INSTALLER, '--settings', file, '--answer'], { encoding: 'utf8' });
+  assert.match(out, /Sicherung: .*settings-backups\/settings-\d{8}-\d{6}-\d{3}\.json/);
+  const after = JSON.parse(readFileSync(file, 'utf8'));
+  assert.equal(after.hooks.PermissionRequest.length, 2);
+  const again = execFileSync('node', [INSTALLER, '--settings', file, '--answer'], { encoding: 'utf8' });
+  assert.match(again, /nichts geschrieben/);
+  const backup = out.match(/Sicherung: (.*)\n/)[1];
+  rmSync(backup, { force: true });
+  rmSync(dir, { recursive: true, force: true });
+});

@@ -13,12 +13,13 @@
  * Der Installer ist Komfort, keine Voraussetzung — der Eintrag laesst sich
  * von Hand setzen, siehe README.
  */
-import { readFile, writeFile, rename, stat, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, rename, stat, mkdir, copyFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
+import { isDeepStrictEqual } from 'node:util';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -166,14 +167,109 @@ export async function checkBaseline(file, baseline) {
   return `${file} ist inzwischen entstanden -- nichts geschrieben. Nochmal starten.`;
 }
 
+// ---- Answer hook (permission prompts answered in the panel) ----------------
+// An http hook under hooks.PermissionRequest. Other tools may hold an entry on
+// the very same path with another port (Agent Tower), so "own" includes the
+// port: an entry on a different port is foreign and never touched.
+
+export const ANSWER_PATH = '/api/hook/permission-request';
+export const ANSWER_TIMEOUT_S = 43200;
+
+export function answerEntry(port) {
+  return {
+    matcher: '*',
+    hooks: [{ type: 'http', url: `http://127.0.0.1:${port}${ANSWER_PATH}`, timeout: ANSWER_TIMEOUT_S }],
+  };
+}
+
+const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+
+function isOwnAnswerHook(hook, port) {
+  if (!isObj(hook) || hook.type !== 'http' || typeof hook.url !== 'string') return false;
+  try {
+    const url = new URL(hook.url);
+    return (
+      (url.hostname === '127.0.0.1' || url.hostname === 'localhost') &&
+      Number(url.port) === Number(port) &&
+      url.pathname === ANSWER_PATH
+    );
+  } catch {
+    return false;
+  }
+}
+
+function requestGroups(settings) {
+  if (!isObj(settings)) throw new Error('settings.json: not a JSON object');
+  if (settings.hooks === undefined) return [];
+  if (!isObj(settings.hooks)) throw new Error('settings.json: "hooks" is not an object');
+  const list = settings.hooks.PermissionRequest;
+  if (list === undefined) return [];
+  if (!Array.isArray(list)) throw new Error('settings.json: "hooks.PermissionRequest" is not a list');
+  return list;
+}
+
+/** The list without own answer hooks; `at` is where the first one stood (-1: none).
+ *  A group shared with a foreign hook keeps the foreign hook. */
+function withoutOwnAnswer(groups, port) {
+  let at = -1;
+  const rest = [];
+  for (const group of groups) {
+    const hooks = isObj(group) && Array.isArray(group.hooks) ? group.hooks : null;
+    if (!hooks || !hooks.some((h) => isOwnAnswerHook(h, port))) {
+      rest.push(group);
+      continue;
+    }
+    if (at === -1) at = rest.length;
+    const others = hooks.filter((h) => !isOwnAnswerHook(h, port));
+    if (others.length) rest.push({ ...group, hooks: others });
+  }
+  return { rest, at };
+}
+
+/** Appends the answer entry, or replaces a differing own one in place. Identical: no change. */
+export function planAnswerInstall(settings, port) {
+  const entry = answerEntry(port);
+  const groups = requestGroups(settings);
+  const { rest, at } = withoutOwnAnswer(groups, port);
+  if (rest.length === groups.length - 1 && groups.some((g) => isDeepStrictEqual(g, entry))) {
+    return { changed: false, next: settings };
+  }
+  const list = at === -1 ? [...rest, entry] : [...rest.slice(0, at), entry, ...rest.slice(at)];
+  return { changed: true, next: { ...settings, hooks: { ...settings.hooks, PermissionRequest: list } } };
+}
+
+/** Removes only the own answer hook; keys that become empty by that go too. */
+export function planAnswerUninstall(settings, port) {
+  const groups = requestGroups(settings);
+  const { rest, at } = withoutOwnAnswer(groups, port);
+  if (at === -1) return { changed: false, next: settings };
+  const hooks = { ...settings.hooks };
+  if (rest.length) hooks.PermissionRequest = rest;
+  else delete hooks.PermissionRequest;
+  const next = { ...settings };
+  if (Object.keys(hooks).length) next.hooks = hooks;
+  else delete next.hooks;
+  return { changed: true, next };
+}
+
+/** Backup file name, local time, millisecond resolution: settings-YYYYMMDD-HHMMSS-mmm.json */
+export function backupName(d = new Date()) {
+  const p = (n, w = 2) => String(n).padStart(w, '0');
+  return (
+    `settings-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-` +
+    `${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}-${p(d.getMilliseconds(), 3)}.json`
+  );
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const uninstall = args.includes('--uninstall');
+  const answer = args.includes('--answer');
   const at = args.indexOf('--settings');
   const file = at >= 0 ? args[at + 1] : join(homedir(), '.claude', 'settings.json');
   const hookPath = join(root, 'hooks', 'session-status.sh');
 
-  if (!uninstall) {
+  if (!uninstall && !answer) {
     const missing = checkHookExists(hookPath);
     if (missing) {
       console.error(missing);
@@ -237,7 +333,24 @@ async function main() {
     process.exit(1);
     return;
   }
-  const next = uninstall ? removeHooks(settings, hookPath) : applyHooks(settings, hookPath);
+  let next;
+  let port = null;
+  try {
+    if (answer) {
+      port = (await import('../src/collect.mjs').then((m) => m.loadConfig())).port;
+      next = uninstall ? planAnswerUninstall(settings, port).next : planAnswerInstall(settings, port).next;
+    } else if (uninstall) {
+      // Plain uninstall: status hook and answer entry.
+      port = (await import('../src/collect.mjs').then((m) => m.loadConfig())).port;
+      next = planAnswerUninstall(removeHooks(settings, hookPath), port).next;
+    } else {
+      next = applyHooks(settings, hookPath);
+    }
+  } catch (err) {
+    console.error(`${err.message} -- nichts geschrieben.`);
+    process.exit(1);
+    return;
+  }
 
   // Nichts zu tun heisst nichts schreiben: ein zweiter Installer-Lauf formatiert
   // sonst die Datei eines anderen Werkzeugs um, und ein --uninstall ohne
@@ -246,7 +359,9 @@ async function main() {
     console.log(
       uninstall
         ? `Keine Eintraege von Agent Colony in ${file} -- nichts geschrieben.`
-        : `Schon eingetragen: ${EVENTS.length} Ereignisse in ${file} -- nichts geschrieben.`,
+        : answer
+          ? `Antwort-Hook schon eingetragen in ${file} -- nichts geschrieben.`
+          : `Schon eingetragen: ${EVENTS.length} Ereignisse in ${file} -- nichts geschrieben.`,
     );
     return;
   }
@@ -257,13 +372,25 @@ async function main() {
     process.exit(1);
   }
 
+  if (baseline.existed) {
+    const backupDir = join(root, 'scratchpad', 'settings-backups');
+    await mkdir(backupDir, { recursive: true });
+    const backup = join(backupDir, backupName());
+    await copyFile(file, backup);
+    console.log(`Sicherung: ${backup}`);
+  }
+
   const tmp = `${file}.agent-colony.tmp`;
   // Auf einer Maschine, auf der Claude Code noch nie lief, fehlt ~/.claude.
   await mkdir(dirname(file), { recursive: true });
   await writeFile(tmp, JSON.stringify(next, null, 2) + '\n', 'utf8');
   await rename(tmp, file);
-  console.log(`${uninstall ? 'Entfernt' : 'Eingetragen'}: ${EVENTS.length} Ereignisse in ${file}`);
-  console.log(`Hook: ${hookPath}`);
+  if (answer) {
+    console.log(`${uninstall ? 'Entfernt' : 'Eingetragen'}: Antwort-Hook (Port ${port}) in ${file}`);
+  } else {
+    console.log(`${uninstall ? 'Entfernt' : 'Eingetragen'}: ${EVENTS.length} Ereignisse in ${file}`);
+    console.log(`Hook: ${hookPath}`);
+  }
 }
 
 if (process.argv[1]?.endsWith('install-hooks.mjs')) await main();
