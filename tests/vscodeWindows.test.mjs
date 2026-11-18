@@ -83,3 +83,68 @@ test('twinsOf nennt nur die anderen', () => {
     '/b/production',
   ]);
 });
+
+/* Socket discovery with injected sockets and run: nothing is started. Made-up paths. */
+const { findWindows, resetSocketCache } = await import('../src/vscode.mjs');
+
+const WIN_OUT = 'proc stuff\n  window [3] (a - demo [WSL: Ubuntu] - Visual Studio Code)\n';
+function fake(live, socketsList) {
+  const calls = [];
+  return {
+    calls,
+    sockets: async () => socketsList,
+    run: async (_cli, _args, opts) => {
+      const s = opts.env.VSCODE_IPC_HOOK_CLI;
+      calls.push(s);
+      if (!live.includes(s)) throw new Error('dead');
+      return { stdout: WIN_OUT };
+    },
+  };
+}
+const SOCKS = [
+  { path: '/run/x/vscode-ipc-old.sock', mtimeMs: 1 },
+  { path: '/run/x/vscode-ipc-new.sock', mtimeMs: 9 },
+];
+
+test('Socket: der neueste zuerst, ein toter wird uebersprungen', async () => {
+  resetSocketCache();
+  delete process.env.VSCODE_IPC_HOOK_CLI;
+  const deps = fake(['/run/x/vscode-ipc-old.sock'], SOCKS);
+  const r = await findWindows(deps, 'code');
+  assert.equal(r.socket, '/run/x/vscode-ipc-old.sock');
+  assert.deepEqual(deps.calls, ['/run/x/vscode-ipc-new.sock', '/run/x/vscode-ipc-old.sock']);
+  assert.equal(r.list[0].id, 3);
+});
+
+test('Socket: der gemerkte kommt zuerst, stirbt er, faellt er raus', async () => {
+  resetSocketCache();
+  delete process.env.VSCODE_IPC_HOOK_CLI;
+  const a = fake(['/run/x/vscode-ipc-new.sock'], SOCKS);
+  await findWindows(a, 'code');
+  const b = fake(['/run/x/vscode-ipc-new.sock'], SOCKS);
+  await findWindows(b, 'code');
+  assert.deepEqual(b.calls, ['/run/x/vscode-ipc-new.sock']);
+  const c = fake(['/run/x/vscode-ipc-old.sock'], SOCKS);
+  const r = await findWindows(c, 'code');
+  assert.equal(r.socket, '/run/x/vscode-ipc-old.sock');
+  assert.deepEqual(c.calls, ['/run/x/vscode-ipc-new.sock', '/run/x/vscode-ipc-old.sock']);
+});
+
+test('Socket: laeuft die Umgebungsvariable, bleibt es dabei', async () => {
+  resetSocketCache();
+  process.env.VSCODE_IPC_HOOK_CLI = '/run/x/vscode-ipc-env.sock';
+  try {
+    const deps = fake(['/run/x/vscode-ipc-env.sock'], SOCKS);
+    const r = await findWindows(deps, 'code');
+    assert.equal(r.socket, null);
+    assert.deepEqual(deps.calls, ['/run/x/vscode-ipc-env.sock']);
+  } finally {
+    delete process.env.VSCODE_IPC_HOOK_CLI;
+  }
+});
+
+test('Socket: keiner lebt, ein Fehler mit Klartext', async () => {
+  resetSocketCache();
+  delete process.env.VSCODE_IPC_HOOK_CLI;
+  await assert.rejects(findWindows(fake([], SOCKS), 'code'), /kein lebender VS-Code-Socket/);
+});

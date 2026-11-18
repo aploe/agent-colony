@@ -1,4 +1,4 @@
-/* Eine Agenten-Session in VS Code oeffnen.
+/* Eine Agenten-Session in VS Code oeffnen. Socket discovery: agent-tower src/vscode.mjs, commit 3520192.
  *
  * Die einzige Stelle im Projekt, die fremde Prozesse startet. Alles andere
  * hier liest nur. Der Weg hat drei Schritte, und jeder einzelne ist noetig:
@@ -75,17 +75,96 @@ async function findCli(cfg) {
   return found[0].cli;
 }
 
-/* Die offenen Fenster als [{ id, title }]. `code -s` schreibt neben den
- * Fenstern die ganze Prozessliste; nur die Zeilen mit `window [n] (...)`
- * zaehlen. */
-async function windows(cli) {
-  const { stdout } = await run(cli, ['-s'], { timeout: CLI_TIMEOUT_MS });
+/* Socket discovery, ported from agent-tower src/vscode.mjs, commit 3520192.
+ *
+ * The remote CLI refuses to run without `VSCODE_IPC_HOOK_CLI` ("Command is only available in
+ * WSL or inside a Visual Studio Code terminal"). A server started outside a VS Code terminal
+ * has none, so it picks a live `vscode-ipc-*.sock` itself. Measured in Agent Tower: the newest
+ * live socket works, old dead ones list nothing. A socket counts when `code -s` through it
+ * lists at least one `window [n]`. Order: the env var if set, then the cached socket, then the
+ * rest newest first. */
+const LIST_TIMEOUT_MS = 8_000;
+
+async function listSockets() {
+  const dir = process.env.XDG_RUNTIME_DIR || `/run/user/${process.getuid()}`;
+  let names;
+  try {
+    names = await readdir(dir);
+  } catch {
+    return [];
+  }
   const out = [];
-  for (const line of stdout.split('\n')) {
+  for (const n of names) {
+    if (!/^vscode-ipc-.*\.sock$/.test(n)) continue;
+    const p = join(dir, n);
+    try {
+      out.push({ path: p, mtimeMs: (await stat(p)).mtimeMs });
+    } catch {
+      // vanished between readdir and stat
+    }
+  }
+  return out;
+}
+
+const defaultDeps = { run, sockets: listSockets };
+
+/* The socket that worked last time; dropped when it stops listing windows. */
+let cachedSocket = null;
+
+function resetSocketCache() {
+  cachedSocket = null;
+}
+
+/* The open windows as [{ id, title }] through one socket (null = the inherited environment).
+ * `code -s` prints the whole process list next to the windows; only the lines with
+ * `window [n] (...)` count. Never throws: an error or an empty list means a dead socket. */
+async function windowsVia(deps, cli, socket) {
+  let stdout;
+  try {
+    ({ stdout } = await deps.run(cli, ['-s'], {
+      env: socket ? { ...process.env, VSCODE_IPC_HOOK_CLI: socket } : process.env,
+      timeout: LIST_TIMEOUT_MS,
+    }));
+  } catch {
+    return null;
+  }
+  const out = [];
+  for (const line of String(stdout).split('\n')) {
     const m = line.match(/window \[(\d+)\] \((.*)\)\s*$/);
     if (m) out.push({ id: Number(m[1]), title: m[2] });
   }
-  return out;
+  return out.length ? out : null;
+}
+
+/* { socket, list } from the first working socket; `socket` is null when the inherited
+ * environment works. Throws when none does. */
+async function findWindows(deps, cli) {
+  if (process.env.VSCODE_IPC_HOOK_CLI) {
+    const list = await windowsVia(deps, cli, null);
+    if (list) return { socket: null, list };
+  }
+  let dead = null;
+  if (cachedSocket) {
+    const list = await windowsVia(deps, cli, cachedSocket);
+    if (list) return { socket: cachedSocket, list };
+    dead = cachedSocket;
+    cachedSocket = null;
+  }
+  const entries = [...(await deps.sockets())].sort((a, b) => b.mtimeMs - a.mtimeMs);
+  for (const { path } of entries) {
+    if (path === dead) continue;
+    const list = await windowsVia(deps, cli, path);
+    if (list) {
+      cachedSocket = path;
+      return { socket: path, list };
+    }
+  }
+  throw new Error('kein lebender VS-Code-Socket gefunden — ist VS Code mit WSL-Remote offen?');
+}
+
+/* The open windows as a list. */
+async function windows(cli, deps = defaultDeps) {
+  return (await findWindows(deps, cli)).list;
 }
 
 /* Alle Fenster, deren Titel auf diesen Ordner passt.
@@ -137,17 +216,21 @@ function pickWindow(path, distro, list, knownPaths) {
 
 /* Fenster oeffnen oder nach vorn holen, dann die Session als Tab.
  * Liefert { window, reused, title }; jeder Fehlschlag wirft mit Klartext. */
-async function openSession({ path, sessionId, distro, cfg, knownPaths = [] }) {
+async function openSession({ path, sessionId, distro, cfg, knownPaths = [], deps = defaultDeps }) {
   if (!UUID.test(sessionId ?? '')) throw new Error('keine gueltige Session-ID');
   if (!distro) throw new Error('keine WSL-Distro bekannt (config.wslDistro)');
 
   const cli = await findCli(cfg);
   // Erst pruefen, dann oeffnen: bei einem mehrdeutigen Titel soll gar nichts
   // passieren, nicht das Falsche.
-  const before = pickWindow(path, distro, await windows(cli), knownPaths);
+  const found = await findWindows(deps, cli);
+  const before = pickWindow(path, distro, found.list, knownPaths);
 
   // Ohne Schalter: oeffnet ein neues Fenster oder fokussiert das bestehende.
-  await run(cli, [path], { timeout: CLI_TIMEOUT_MS });
+  await deps.run(cli, [path], {
+    env: found.socket ? { ...process.env, VSCODE_IPC_HOOK_CLI: found.socket } : process.env,
+    timeout: CLI_TIMEOUT_MS,
+  });
 
   let win = before;
   if (!win) {
@@ -157,7 +240,7 @@ async function openSession({ path, sessionId, distro, cfg, knownPaths = [] }) {
       // Vorher gab es kein Fenster mit diesem Namen; was jetzt auftaucht, ist
       // das eben geoeffnete. Ein zweites waere ein fremdes, das in derselben
       // Sekunde aufging — dann wirft pickWindow, und das ist richtig so.
-      win = pickWindow(path, distro, await windows(cli), knownPaths);
+      win = pickWindow(path, distro, await windows(cli, deps), knownPaths);
     }
     if (!win) throw new Error(`Fenster fuer ${path} kam nicht hoch`);
     // Das Fenster steht, die Extension laedt noch. Ohne diesen Puffer geht
@@ -178,4 +261,4 @@ async function openSession({ path, sessionId, distro, cfg, knownPaths = [] }) {
   return { window: win.id, reused: Boolean(before), title: win.title };
 }
 
-export { findCli, openSession, pickWindow, twinsOf, windowsFor, windows, UUID };
+export { findCli, findWindows, openSession, pickWindow, resetSocketCache, twinsOf, windowsFor, windows, UUID };
